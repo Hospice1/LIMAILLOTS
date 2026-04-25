@@ -1,0 +1,55 @@
+﻿import { CategoryItem } from "@/types/store";
+
+interface CategoryGridProps {
+  items: CategoryItem[];
+  activeLabel: string;
+  onSelect: (item: CategoryItem) => void;
+}
+
+export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps) {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mb-6 flex items-end justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+            Navigation rapide
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--text)] md:text-3xl">
+            Explore les collections
+          </h2>
+        </div>
+        <span className="hidden rounded-full border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] md:inline-flex">
+          Filtre actif: {activeLabel}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {items.map((item) => {
+          const isActive = activeLabel === item.label;
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onSelect(item)}
+              className="group rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-[var(--card-shadow)] transition hover:-translate-y-1 hover:border-[var(--accent)]"
+            >
+              <div
+                className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${item.gradient} text-3xl shadow-lg md:h-24 md:w-24`}
+              >
+                <span aria-hidden="true">{item.visual}</span>
+              </div>
+              <p className="mt-3 text-center text-sm font-semibold text-[var(--text)] md:text-base">
+                {item.label}
+              </p>
+              <p className="mt-1 text-center text-xs text-[var(--text-muted)]">
+                {isActive ? "Actif" : "Voir"}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
