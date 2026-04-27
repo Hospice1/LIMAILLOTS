@@ -1,5 +1,11 @@
+<<<<<<< HEAD
 ﻿import { CategoryItem } from "@/types/store";
 import { CloseIcon } from "@/components/icons";
+=======
+﻿import { CloseIcon } from "@/components/icons";
+import { LimaillotsLogo } from "@/components/limaillots-logo";
+import { CategoryItem } from "@/types/store";
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 
 interface MobileMenuProps {
   open: boolean;
@@ -31,9 +37,13 @@ export function MobileMenu({
         aria-label="Menu mobile"
       >
         <div className="mb-5 flex items-center justify-between">
+<<<<<<< HEAD
           <p className="font-hero text-lg tracking-[0.2em] text-[var(--text)]">
             LIMAILLOTS
           </p>
+=======
+          <LimaillotsLogo className="h-10 w-[168px] text-[var(--text)]" />
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
           <button
             type="button"
             onClick={onClose}
@@ -45,6 +55,7 @@ export function MobileMenu({
         </div>
 
         <nav className="space-y-2">
+<<<<<<< HEAD
           <a href="#" className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]" onClick={onClose}>
             Accueil
           </a>
@@ -52,13 +63,45 @@ export function MobileMenu({
             Boutique
           </a>
           <a href="#footer" className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]" onClick={onClose}>
+=======
+          <a
+            href="#"
+            className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]"
+            onClick={onClose}
+          >
+            Accueil
+          </a>
+          <a
+            href="#products"
+            className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]"
+            onClick={onClose}
+          >
+            Boutique
+          </a>
+          <a
+            href="/compte"
+            className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]"
+            onClick={onClose}
+          >
+            Mon espace client
+          </a>
+          <a
+            href="#footer"
+            className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--text)] hover:bg-[var(--surface-muted)]"
+            onClick={onClose}
+          >
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
             Contact
           </a>
         </nav>
 
         <div className="mt-6">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+<<<<<<< HEAD
             Catégories
+=======
+            Categories
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
           </p>
           <div className="grid grid-cols-2 gap-2">
             {items.slice(0, 12).map((item) => (
@@ -79,8 +122,19 @@ export function MobileMenu({
             ))}
           </div>
         </div>
+<<<<<<< HEAD
       </aside>
     </>
   );
 }
 
+=======
+
+        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+          © Designed by iamyotto | All rights reserved.
+        </p>
+      </aside>
+    </>
+  );
+}
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

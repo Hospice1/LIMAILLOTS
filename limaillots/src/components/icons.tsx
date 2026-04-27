@@ -102,5 +102,25 @@ export function ArrowRightIcon(props: IconProps) {
       <path strokeLinecap="round" d="m13 6 6 6-6 6" />
     </svg>
   );
+<<<<<<< HEAD
 }
 
+=======
+}
+
+export function HeartIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" {...props}>
+      <path d="M12 20s-6.5-4.2-9-8C1 8.8 3.2 5 7 5c2.2 0 3.9 1.2 5 2.9C13.1 6.2 14.8 5 17 5c3.8 0 6 3.8 4 7-2.5 3.8-9 8-9 8Z" />
+    </svg>
+  );
+}
+
+export function HeartFilledIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M12 20s-6.5-4.2-9-8C1 8.8 3.2 5 7 5c2.2 0 3.9 1.2 5 2.9C13.1 6.2 14.8 5 17 5c3.8 0 6 3.8 4 7-2.5 3.8-9 8-9 8Z" />
+    </svg>
+  );
+}
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

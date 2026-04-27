@@ -1,7 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES2017",
+<<<<<<< HEAD
     "lib": ["dom", "dom.iterable", "esnext"],
+=======
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,16 +27,33 @@
       }
     ],
     "paths": {
+<<<<<<< HEAD
       "@/*": ["./src/*"]
+=======
+      "@/*": [
+        "./src/*"
+      ]
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
     }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
+<<<<<<< HEAD
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
   "exclude": ["node_modules"]
+=======
+    "**/*.mts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 }

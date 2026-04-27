@@ -8,6 +8,10 @@ interface SearchFiltersProps {
   sizes: string[];
   theme: ShopTheme;
   resultCount: number;
+<<<<<<< HEAD
+=======
+  wishlistCount: number;
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   onThemeToggle: () => void;
   onFiltersChange: (update: Partial<ProductFilters>) => void;
 }
@@ -19,6 +23,10 @@ export function SearchFilters({
   sizes,
   theme,
   resultCount,
+<<<<<<< HEAD
+=======
+  wishlistCount,
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   onThemeToggle,
   onFiltersChange,
 }: SearchFiltersProps) {
@@ -32,7 +40,11 @@ export function SearchFilters({
               id="search-products"
               value={filters.search}
               onChange={(event) => onFiltersChange({ search: event.target.value })}
+<<<<<<< HEAD
               placeholder="Rechercher maillot, crampons, accessoire..."
+=======
+              placeholder="Rechercher maillot, crampons, accessoire (tolérance typo)..."
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
               className="h-12 w-full rounded-full border border-[var(--border)] bg-[var(--surface-muted)] pl-10 pr-4 text-sm text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
             />
           </label>
@@ -93,9 +105,17 @@ export function SearchFilters({
           />
         </div>
 
+<<<<<<< HEAD
         <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
           {resultCount} produits affichés
         </p>
+=======
+        <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
+          <p>{resultCount} produits affichés</p>
+          <span className="h-1 w-1 rounded-full bg-[var(--border)]" />
+          <p>{wishlistCount} favoris</p>
+        </div>
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
       </div>
     </section>
   );
@@ -132,5 +152,9 @@ function SelectFilter({ label, value, options, onChange }: SelectFilterProps) {
       </select>
     </label>
   );
+<<<<<<< HEAD
 }
 
+=======
+}
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

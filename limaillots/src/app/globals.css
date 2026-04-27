@@ -10,6 +10,11 @@
   --text-muted: #5c667a;
   --border: #d7dfec;
   --accent: #0f766e;
+<<<<<<< HEAD
+=======
+  --logo-arc-1: #0f766e;
+  --logo-arc-2: #0e7490;
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   --card-shadow: 0 18px 44px rgba(17, 24, 39, 0.12);
 }
 
@@ -23,6 +28,11 @@
   --text-muted: #9aa9c2;
   --border: #1f2f47;
   --accent: #14b8a6;
+<<<<<<< HEAD
+=======
+  --logo-arc-1: #2dd4bf;
+  --logo-arc-2: #38bdf8;
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   --card-shadow: 0 24px 60px rgba(2, 8, 20, 0.55);
 }
 
@@ -44,12 +54,20 @@ body {
     radial-gradient(circle at 92% -8%, var(--bg-orb-b), transparent 32%),
     var(--bg);
   color: var(--text);
+<<<<<<< HEAD
   font-family: var(--font-body), "Segoe UI", sans-serif;
+=======
+  font-family: "Space Grotesk", "Sora", "Manrope", "Segoe UI", sans-serif;
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   transition: background 300ms ease, color 300ms ease;
 }
 
 .font-hero {
+<<<<<<< HEAD
   font-family: var(--font-hero), "Segoe UI", sans-serif;
+=======
+  font-family: "Rajdhani", "Teko", "Space Grotesk", "Segoe UI", sans-serif;
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 }
 
 .hero-glow {
@@ -84,5 +102,9 @@ body {
 
 .animate-float-slow {
   animation: float-slow 9s ease-in-out infinite;
+<<<<<<< HEAD
 }
 
+=======
+}
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

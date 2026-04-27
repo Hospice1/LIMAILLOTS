@@ -11,11 +11,15 @@ export function formatPrice(amount: number): string {
 export function applyFilters(products: Product[], filters: ProductFilters): Product[] {
   return products
     .filter((product) => {
+<<<<<<< HEAD
       const searchNeedle = filters.search.trim().toLowerCase();
       const matchesSearch =
         searchNeedle.length === 0 ||
         product.name.toLowerCase().includes(searchNeedle) ||
         product.description.toLowerCase().includes(searchNeedle);
+=======
+      const matchesSearch = matchesProductSearch(product, filters.search);
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 
       const matchesCategory =
         filters.category === "Tous" || product.category === filters.category;
@@ -38,6 +42,7 @@ export function applyFilters(products: Product[], filters: ProductFilters): Prod
       );
     })
     .sort((a, b) => {
+<<<<<<< HEAD
       if (filters.sortBy === "price-asc") return a.price - b.price;
       if (filters.sortBy === "price-desc") return b.price - a.price;
       if (filters.sortBy === "newest") return b.noveltyRank - a.noveltyRank;
@@ -45,6 +50,28 @@ export function applyFilters(products: Product[], filters: ProductFilters): Prod
     });
 }
 
+=======
+      if (filters.sortBy === "price-asc") {
+        return a.price - b.price || b.rating - a.rating;
+      }
+
+      if (filters.sortBy === "price-desc") {
+        return b.price - a.price || b.rating - a.rating;
+      }
+
+      if (filters.sortBy === "newest") {
+        return b.noveltyRank - a.noveltyRank || b.popularity - a.popularity;
+      }
+
+      return b.popularity - a.popularity || b.rating - a.rating;
+    });
+}
+
+export function findProductBySlug(slug: string, products: Product[]): Product | undefined {
+  return products.find((product) => product.slug === slug);
+}
+
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 function matchPriceRange(price: number, range: string): boolean {
   if (range === "Tous") return true;
   if (range === "<20000") return price < 20000;
@@ -52,5 +79,92 @@ function matchPriceRange(price: number, range: string): boolean {
   if (range === "40000-70000") return price >= 40000 && price <= 70000;
   if (range === ">70000") return price > 70000;
   return true;
+<<<<<<< HEAD
 }
 
+=======
+}
+
+function matchesProductSearch(product: Product, rawSearch: string): boolean {
+  const search = normalizeText(rawSearch.trim());
+  if (!search) return true;
+
+  const haystack = normalizeText(
+    [
+      product.name,
+      product.description,
+      product.category,
+      product.clubOrCountry,
+      ...product.details,
+    ].join(" "),
+  );
+
+  if (haystack.includes(search)) {
+    return true;
+  }
+
+  const queryTokens = tokenize(search);
+  const words = tokenize(haystack);
+
+  return queryTokens.every((token) =>
+    words.some((word) => word.includes(token) || isFuzzyNear(token, word)),
+  );
+}
+
+function tokenize(value: string): string[] {
+  return value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isFuzzyNear(token: string, word: string): boolean {
+  if (!token || !word) return false;
+
+  const maxDistance = token.length <= 4 ? 1 : 2;
+
+  if (Math.abs(token.length - word.length) > maxDistance) {
+    return false;
+  }
+
+  return levenshtein(token, word) <= maxDistance;
+}
+
+function levenshtein(a: string, b: string): number {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const matrix: number[][] = Array.from({ length: rows }, () => Array(cols).fill(0));
+
+  for (let i = 0; i < rows; i += 1) {
+    matrix[i][0] = i;
+  }
+
+  for (let j = 0; j < cols; j += 1) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i < rows; i += 1) {
+    for (let j = 1; j < cols; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+}
+>>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
