@@ -16,7 +16,3 @@ const eslintConfig = defineConfig([
 ]);
 
 export default eslintConfig;
-<<<<<<< HEAD
-
-=======
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

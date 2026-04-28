@@ -1,4 +1,4 @@
-﻿interface PromoBannerProps {
+interface PromoBannerProps {
   message: string;
 }
 
@@ -8,10 +8,4 @@ export function PromoBanner({ message }: PromoBannerProps) {
       {message}
     </div>
   );
-<<<<<<< HEAD
 }
-
-=======
-}
-
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

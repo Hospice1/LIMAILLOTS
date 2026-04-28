@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-﻿import { CategoryItem } from "@/types/store";
-=======
-﻿import Image from "next/image";
+import Image from "next/image";
 import { CategoryItem } from "@/types/store";
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 
 interface CategoryGridProps {
   items: CategoryItem[];
@@ -40,11 +36,6 @@ export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps
               className="group rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-[var(--card-shadow)] transition hover:-translate-y-1 hover:border-[var(--accent)]"
             >
               <div
-<<<<<<< HEAD
-                className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br ${item.gradient} text-3xl shadow-lg md:h-24 md:w-24`}
-              >
-                <span aria-hidden="true">{item.visual}</span>
-=======
                 className={`relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-[var(--surface-muted)] text-3xl shadow-lg ring-4 ring-transparent transition group-hover:scale-[1.03] md:h-24 md:w-24 ${
                   isActive ? "ring-[var(--accent)]/20" : ""
                 }`}
@@ -63,7 +54,6 @@ export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
               </div>
               <p className="mt-3 text-center text-sm font-semibold text-[var(--text)] md:text-base">
                 {item.label}
@@ -77,9 +67,4 @@ export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps
       </div>
     </section>
   );
-<<<<<<< HEAD
 }
-
-=======
-}
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

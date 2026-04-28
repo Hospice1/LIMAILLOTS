@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from "next";
-<<<<<<< HEAD
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Rajdhani, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -13,15 +14,6 @@ const heroFont = Rajdhani({
   subsets: ["latin"],
   weight: ["600", "700"],
 });
-
-export const metadata: Metadata = {
-  title: "LIMAILLOTS | Boutique football premium",
-  description:
-    "LIMAILLOTS - boutique moderne de maillots, crampons, chaussettes et accessoires pour étudiants et fans de football.",
-=======
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
-import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://limaillots.vercel.app";
 
@@ -69,7 +61,6 @@ export const metadata: Metadata = {
     images: ["/og-limaillots.svg"],
   },
   category: "shopping",
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 };
 
 export default function RootLayout({
@@ -78,19 +69,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-<<<<<<< HEAD
     <html
       lang="fr"
       className={`${bodyFont.variable} ${heroFont.variable} antialiased`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
-    </html>
-  );
-}
-
-=======
-    <html lang="fr" className="antialiased" suppressHydrationWarning>
       <body>
         {children}
         <Analytics />
@@ -99,4 +82,3 @@ export default function RootLayout({
     </html>
   );
 }
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

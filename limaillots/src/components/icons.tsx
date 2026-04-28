@@ -1,4 +1,4 @@
-﻿import { ComponentPropsWithoutRef } from "react";
+import { ComponentPropsWithoutRef } from "react";
 
 type IconProps = ComponentPropsWithoutRef<"svg">;
 
@@ -102,10 +102,6 @@ export function ArrowRightIcon(props: IconProps) {
       <path strokeLinecap="round" d="m13 6 6 6-6 6" />
     </svg>
   );
-<<<<<<< HEAD
-}
-
-=======
 }
 
 export function HeartIcon(props: IconProps) {
@@ -123,4 +119,3 @@ export function HeartFilledIcon(props: IconProps) {
     </svg>
   );
 }
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
