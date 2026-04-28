@@ -1,13 +1,16 @@
-
+﻿
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { LimaillotsLogo } from "@/components/limaillots-logo";
 import { AdminReviewsPanel, type AdminReviewItem } from "@/components/admin/admin-reviews-panel";
 import { formatPrice } from "@/lib/store-utils";
 import { AdminClient, AdminDatabase, AdminPromoCode, ReviewStatus } from "@/types/admin";
+import { categoryItems } from "@/data/store-data";
 import { Product } from "@/types/store";
+
 
 type AdminTab = "overview" | "products" | "clients" | "reviews" | "promos" | "security";
 
@@ -34,6 +37,7 @@ const emptyDatabase: AdminDatabase = {
   promoCodes: [],
   sales: [],
   orders: [],
+  changeHistory: [],
   settings: {
     adminEmail: "",
     recoveryEmail: "",
@@ -41,6 +45,180 @@ const emptyDatabase: AdminDatabase = {
   },
 };
 
+
+type ProductEditorState = {
+  productId: string;
+  name: string;
+  categoryMode: "existing" | "new";
+  category: string;
+  customCategory: string;
+  clubOrCountry: string;
+  description: string;
+  sizes: string;
+  price: string;
+  oldPrice: string;
+  stock: string;
+  primaryImage: string;
+  imageUrls: string;
+  visual: string;
+  isPromo: boolean;
+  isNew: boolean;
+};
+
+function createEmptyProductEditorState(product?: Product | null): ProductEditorState {
+  if (!product) {
+    return {
+      productId: "",
+      name: "",
+      categoryMode: "existing",
+      category: "Internationaux",
+      customCategory: "",
+      clubOrCountry: "Universel",
+      description: "",
+      sizes: "M,L,XL",
+      price: "29990",
+      oldPrice: "",
+      stock: "10",
+      primaryImage: "",
+      imageUrls: "",
+      visual: "",
+      isPromo: false,
+      isNew: false,
+    };
+  }
+
+  return {
+    productId: product.id,
+    name: product.name,
+    categoryMode: "existing",
+    category: product.category,
+    customCategory: "",
+    clubOrCountry: product.clubOrCountry,
+    description: product.description,
+    sizes: product.sizes.join(","),
+    price: String(product.price),
+    oldPrice: product.oldPrice ? String(product.oldPrice) : "",
+    stock: String(product.stock),
+    primaryImage: product.imageUrl ?? product.images?.[0] ?? "",
+    imageUrls: product.images?.slice(1).join(",") ?? "",
+    visual: product.visual,
+    isPromo: Boolean(product.isPromo),
+    isNew: Boolean(product.isNew),
+  };
+}
+
+
+function parseOptionalNumber(value: string): number | undefined {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+}
+
+function parseImageList(primaryImage: string, galleryValue: string): string[] {
+  const urls = [primaryImage, ...galleryValue.split(",")]
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return Array.from(new Set(urls));
+}
+
+
+
+
+
+async function uploadFilesToBlob(files: File[], folder: string): Promise<string[]> {
+  const formData = new FormData();
+  formData.set("folder", folder);
+  files.slice(0, 6).forEach((file) => formData.append("files", file));
+
+  const response = await fetch("/api/uploads", {
+    method: "POST",
+    body: formData,
+  });
+
+  const payload = (await response.json()) as { ok?: boolean; urls?: string[]; message?: string };
+
+  if (!response.ok || !payload.ok || !Array.isArray(payload.urls)) {
+    throw new Error(payload.message ?? "Upload impossible.");
+  }
+
+  return payload.urls;
+}
+
+function getProductImageSet(product: Pick<Product, "imageUrl" | "images">): string[] {
+  return parseImageList(product.imageUrl ?? "", product.images?.slice(1).join(",") ?? "");
+}
+
+function hasProductChanges(editor: ProductEditorState, current: Product): boolean {
+  const resolvedCategory = editor.categoryMode === "new"
+    ? editor.customCategory.trim()
+    : editor.category.trim();
+  const editorImages = parseImageList(editor.primaryImage, editor.imageUrls);
+  const currentImages = getProductImageSet(current);
+
+  return (
+    editor.name.trim() !== current.name
+    || editor.description.trim() !== current.description
+    || (resolvedCategory || current.category) !== current.category
+    || (editor.clubOrCountry.trim() || current.clubOrCountry) !== current.clubOrCountry
+    || (Number(editor.price) > 0 ? Number(editor.price) : current.price) !== current.price
+    || (parseOptionalNumber(editor.oldPrice) ?? undefined) !== current.oldPrice
+    || (Number(editor.stock) >= 0 ? Number(editor.stock) : current.stock) !== current.stock
+    || editor.sizes.split(",").map((item) => item.trim()).filter(Boolean).join(",") !== current.sizes.join(",")
+    || editor.visual.trim() !== current.visual
+    || editor.isPromo !== current.isPromo
+    || editor.isNew !== current.isNew
+    || editorImages.join(",") !== currentImages.join(",")
+  );
+}
+
+function summarizeProductChange(before: Product, after: Product): string {
+  const changes: string[] = [];
+
+  if (before.name !== after.name) changes.push("nom");
+  if (before.description !== after.description) changes.push("description");
+  if (before.category !== after.category) changes.push("categorie");
+  if (before.clubOrCountry !== after.clubOrCountry) changes.push("club/pays");
+  if (before.price !== after.price) changes.push("prix");
+  if (before.oldPrice !== after.oldPrice) changes.push("ancien prix");
+  if (before.stock !== after.stock) changes.push("stock");
+  if (before.isPromo !== after.isPromo) changes.push("promo");
+  if (before.isNew !== after.isNew) changes.push("nouveau");
+  if ((before.imageUrl ?? "") !== (after.imageUrl ?? "")) changes.push("image principale");
+  if ((before.images ?? []).join(",") !== (after.images ?? []).join(",")) changes.push("galerie");
+  if (before.visual !== after.visual) changes.push("visuel");
+
+  return changes.length > 0
+    ? `Produit modifie: ${after.name} (${changes.join(", ")})`
+    : `Produit modifie: ${after.name}`;
+}
+
+function buildProductPatchFromEditor(editor: ProductEditorState, current: Product): Partial<Product> {
+  const resolvedCategory = editor.categoryMode === "new"
+    ? editor.customCategory.trim()
+    : editor.category.trim();
+  const images = parseImageList(editor.primaryImage, editor.imageUrls);
+  const oldPrice = parseOptionalNumber(editor.oldPrice);
+  const price = Number(editor.price);
+  const stock = Number(editor.stock);
+
+  return {
+    name: editor.name.trim() || current.name,
+    description: editor.description.trim() || current.description,
+    category: resolvedCategory || current.category,
+    clubOrCountry: editor.clubOrCountry.trim() || current.clubOrCountry,
+    price: Number.isFinite(price) && price > 0 ? price : current.price,
+    oldPrice,
+    stock: Number.isFinite(stock) && stock >= 0 ? stock : current.stock,
+    sizes: editor.sizes
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    visual: editor.visual.trim() || current.visual,
+    isPromo: editor.isPromo,
+    isNew: editor.isNew,
+    imageUrl: images[0],
+    images: images.length > 1 ? images : undefined,
+  };
+}
 export function AdminDashboard() {
   const [db, setDb] = useState<AdminDatabase>(emptyDatabase);
   const [isAuth, setIsAuth] = useState(false);
@@ -61,48 +239,28 @@ export function AdminDashboard() {
     description: "",
     sizes: "M,L,XL",
     price: "29990",
+    oldPrice: "",
     stock: "10",
     imageUrl: "",
+    imageUrls: "",
   });
   const [newProductCategoryMode, setNewProductCategoryMode] = useState<"existing" | "new">("existing");
-
+  const [productEditor, setProductEditor] = useState<ProductEditorState | null>(null);
   const [newPromo, setNewPromo] = useState({
     code: "",
     discountPercent: "10",
     minSubtotal: "20000",
     usageLimit: "100",
   });
-
   const [securityForm, setSecurityForm] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
     recoveryEmail: "",
   });
-
   const [selectedClientId, setSelectedClientId] = useState("");
   const [clientNotification, setClientNotification] = useState({ title: "", message: "" });
   const [changeHistory, setChangeHistory] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
-
-  const totals = useMemo(() => {
-    const totalRevenue = db.sales.reduce((sum, item) => sum + item.revenue, 0);
-    const completedOrders = db.clients.reduce(
-      (sum, client) => sum + client.completedOrders,
-      0,
-    );
-    const pendingCarts = db.clients.reduce(
-      (sum, client) => sum + client.pendingCarts,
-      0,
-    );
-
-    return {
-      totalRevenue,
-      completedOrders,
-      pendingCarts,
-      totalClients: db.clients.length,
-    };
-  }, [db.clients, db.sales]);
-
   const clientsByActivity = useMemo(
     () => [...db.clients].sort((a, b) => getActivityScore(b) - getActivityScore(a)),
     [db.clients],
@@ -113,11 +271,17 @@ export function AdminDashboard() {
     [db.promoCodes],
   );
 
+
   const categoryOptions = useMemo(
-    () => Array.from(new Set(db.products.map((product) => product.category))).sort((a, b) => a.localeCompare(b)),
+    () =>
+      Array.from(
+        new Set([
+          ...categoryItems.flatMap((item) => [item.label, item.targetCategory].filter((value): value is string => Boolean(value))),
+          ...db.products.map((product) => product.category),
+        ]),
+      ).sort((a, b) => a.localeCompare(b)),
     [db.products],
   );
-
   const selectedClient = useMemo(
     () => db.clients.find((client) => client.id === selectedClientId) ?? null,
     [db.clients, selectedClientId],
@@ -127,6 +291,12 @@ export function AdminDashboard() {
     () => db.orders.filter((order) => order.clientId === selectedClientId),
     [db.orders, selectedClientId],
   );
+
+  const selectedProduct = useMemo(
+    () => (productEditor ? db.products.find((product) => product.id === productEditor.productId) ?? null : null),
+    [db.products, productEditor],
+  );
+
 
   const allReviews = useMemo<AdminReviewItem[]>(() => {
     return db.clients
@@ -140,6 +310,7 @@ export function AdminDashboard() {
           productId: review.productId,
           rating: review.rating,
           comment: review.comment,
+          photos: review.photos ?? [],
           createdAt: review.createdAt,
           status: review.status,
         })),
@@ -147,10 +318,33 @@ export function AdminDashboard() {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [db.clients]);
 
-  const maxRevenue = useMemo(
-    () => Math.max(...db.sales.map((item) => item.revenue), 1),
-    [db.sales],
-  );
+  const productAutoSaveSignatureRef = useRef("");
+  const productUpdateRef = useRef(updateProduct);
+  productUpdateRef.current = updateProduct;
+
+  useEffect(() => {
+    if (!productEditor || !selectedProduct || productEditor.productId !== selectedProduct.id) {
+      productAutoSaveSignatureRef.current = "";
+      return;
+    }
+
+    if (!hasProductChanges(productEditor, selectedProduct)) {
+      productAutoSaveSignatureRef.current = "";
+      return;
+    }
+
+    const signature = JSON.stringify(buildProductPatchFromEditor(productEditor, selectedProduct));
+    if (productAutoSaveSignatureRef.current === signature) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      productAutoSaveSignatureRef.current = signature;
+      productUpdateRef.current?.(selectedProduct.id, buildProductPatchFromEditor(productEditor, selectedProduct), true);
+    }, 700);
+
+    return () => window.clearTimeout(timeout);
+  }, [productEditor, selectedProduct]);
 
   useEffect(() => {
     async function boot() {
@@ -313,7 +507,7 @@ export function AdminDashboard() {
     ]);
   }
 
-  function updateProduct(productId: string, update: Partial<Product>) {
+  function updateProduct(productId: string, update: Partial<Product>, quiet = false) {
     const current = db.products.find((product) => product.id === productId);
     const nextDb: AdminDatabase = {
       ...db,
@@ -323,12 +517,18 @@ export function AdminDashboard() {
     };
 
     if (current) {
-      addChangeHistory(`Produit modifie: ${current.name}`);
+      const updated = { ...current, ...update } as Product;
+      if (summarizeProductChange(current, updated) !== `Produit modifie: ${updated.name}`) {
+        addChangeHistory(summarizeProductChange(current, updated));
+      }
+
+      if (productEditor?.productId === productId) {
+        setProductEditor(createEmptyProductEditorState(updated));
+      }
     }
 
-    void persist(nextDb, "Produit modifie.");
+    void persist(nextDb, quiet ? undefined : "Produit modifie.");
   }
-
   function removeProduct(productId: string) {
     const current = db.products.find((product) => product.id === productId);
     const nextDb: AdminDatabase = {
@@ -340,9 +540,12 @@ export function AdminDashboard() {
       addChangeHistory(`Produit supprime: ${current.name}`);
     }
 
+    if (productEditor?.productId === productId) {
+      setProductEditor(null);
+    }
+
     void persist(nextDb, "Produit supprime.");
   }
-
   function handleAddProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -352,6 +555,7 @@ export function AdminDashboard() {
     }
 
     const price = Number(newProduct.price);
+    const oldPrice = Number(newProduct.oldPrice);
     const stock = Number(newProduct.stock);
     if (!Number.isFinite(price) || price <= 0) {
       setFeedback("Prix invalide.");
@@ -375,6 +579,11 @@ export function AdminDashboard() {
     const slug = slugify(newProduct.name);
     const id = `${slug}-${Date.now().toString(36)}`;
     const visual = makeVisual(newProduct.name);
+    const images = parseImageList(newProduct.imageUrl, newProduct.imageUrls);
+    if (images.length === 0) {
+      setFeedback("Ajoute au moins une photo du produit.");
+      return;
+    }
 
     const product: Product = {
       id,
@@ -389,7 +598,8 @@ export function AdminDashboard() {
       category: resolvedCategory,
       clubOrCountry: newProduct.clubOrCountry,
       price,
-      rating: 4.4,
+      oldPrice: Number.isFinite(oldPrice) && oldPrice > price ? oldPrice : undefined,
+
       popularity: 65,
       noveltyRank: Number(new Date().toISOString().slice(0, 10).replaceAll("-", "")),
       sizes: newProduct.sizes
@@ -397,7 +607,8 @@ export function AdminDashboard() {
         .map((item) => item.trim())
         .filter(Boolean),
       visual,
-      imageUrl: newProduct.imageUrl.trim() || undefined,
+      imageUrl: images[0],
+      images: images.length > 1 ? images : undefined,
       gradient: gradientPool[Math.floor(Math.random() * gradientPool.length)],
       stock,
       isNew: true,
@@ -418,10 +629,62 @@ export function AdminDashboard() {
       description: "",
       sizes: "M,L,XL",
       price: "29990",
+      oldPrice: "",
       stock: "10",
       imageUrl: "",
+      imageUrls: "",
     });
     setNewProductCategoryMode("existing");
+  }
+
+  async function handleNewProductFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, 6);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const urls = await uploadFilesToBlob(files, "products");
+      setNewProduct((previous) => ({
+        ...previous,
+        imageUrl: urls[0] ?? "",
+        imageUrls: urls.slice(1).join(","),
+      }));
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Upload produit impossible.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
+  async function handleProductEditorFilesChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, 6);
+
+    if (files.length === 0 || !productEditor) {
+      return;
+    }
+
+    try {
+      const urls = await uploadFilesToBlob(files, "products");
+      setProductEditor((previous) =>
+        previous
+          ? {
+              ...previous,
+              primaryImage: urls[0] ?? "",
+              imageUrls: urls.slice(1).join(","),
+            }
+          : previous,
+      );
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Upload produit impossible.");
+    } finally {
+      event.target.value = "";
+    }
   }
 
   function togglePromoCode(promoId: string) {
@@ -571,17 +834,6 @@ export function AdminDashboard() {
     } catch {
       setFeedback("Impossible de mettre a jour la securite pour le moment.");
     }
-  }
-
-  function resetOverviewData() {
-    const nextDb: AdminDatabase = {
-      ...db,
-      sales: [],
-      orders: [],
-      promoCodes: db.promoCodes.map((promo) => ({ ...promo, usedCount: 0 })),
-    };
-
-    void persist(nextDb, "Vue globale reinitialisee (hors clients actifs).");
   }
 
   function sendClientNotification() {
@@ -743,233 +995,303 @@ export function AdminDashboard() {
               <div className="mb-4 text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Sauvegarde en cours...
               </div>
-            ) : null}
-
-            {activeTab === "overview" ? (
+            ) : null}            {activeTab === "products" ? (
               <div className="space-y-8">
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={resetOverviewData}
-                    className="rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
-                  >
-                    Reinitialiser cette vue (hors clients)
-                  </button>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <StatCard label="Chiffre d'affaires" value={formatPrice(totals.totalRevenue)} />
-                  <StatCard label="Commandes finalisees" value={totals.completedOrders.toString()} />
-                  <StatCard label="Paniers en cours" value={totals.pendingCarts.toString()} />
-                  <StatCard label="Clients" value={totals.totalClients.toString()} />
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text)]">
-                    Evolution des ventes
-                  </h2>
-                  <div className="mt-4 flex items-end gap-3 overflow-x-auto rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-                    {db.sales.map((item) => {
-                      const height = Math.max(24, Math.round((item.revenue / maxRevenue) * 180));
-
-                      return (
-                        <div key={item.period} className="flex min-w-16 flex-col items-center gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-                            {item.orders} cmd
-                          </span>
-                          <div
-                            className="w-10 rounded-t-xl bg-gradient-to-t from-[var(--accent)] to-cyan-400"
-                            style={{ height }}
-                          />
-                          <span className="text-xs font-semibold text-[var(--text)]">
-                            {item.period}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text)]">
-                    Clients les plus actifs
-                  </h2>
-                  <div className="mt-4 space-y-3">
-                    {clientsByActivity.slice(0, 5).map((client) => (
-                      <article
-                        key={client.id}
-                        className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--text)]">
-                            {client.fullName}
-                          </p>
-                          <p className="text-xs text-[var(--text-muted)]">{client.email}</p>
-                        </div>
-                        <div className="text-right text-xs text-[var(--text-muted)]">
-                          <p>{client.completedOrders} commandes</p>
-                          <p>{formatPrice(client.totalSpent)}</p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
-                  <div className="mt-4 space-y-2">
-                    {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistree.</p>
-                    ) : null}
-                    {changeHistory.map((item) => (
-                      <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
-                        <p className="font-semibold text-[var(--text)]">{item.message}</p>
-                        <p className="text-xs text-[var(--text-muted)]">{new Date(item.createdAt).toLocaleString("fr-FR")}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {activeTab === "products" ? (
-              <div className="space-y-8">
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text)]">Ajouter un produit</h2>
-                  <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleAddProduct}>
-                    <Input
-                      label="Nom produit"
-                      value={newProduct.name}
-                      onChange={(value) => setNewProduct((prev) => ({ ...prev, name: value }))}
-                    />
-                    <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                      Categorie
-                      <div className="flex gap-2">
-                        <select
-                          value={newProductCategoryMode}
-                          onChange={(event) =>
-                            setNewProductCategoryMode(event.target.value as "existing" | "new")
-                          }
-                          className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-sm text-[var(--text)]"
-                        >
-                          <option value="existing">Existante</option>
-                          <option value="new">Nouvelle</option>
-                        </select>
-                        {newProductCategoryMode === "existing" ? (
-                          <select
-                            value={newProduct.category}
-                            onChange={(event) =>
-                              setNewProduct((prev) => ({ ...prev, category: event.target.value }))
-                            }
-                            className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-sm text-[var(--text)]"
-                          >
-                            {categoryOptions.map((category) => (
-                              <option key={category} value={category}>
-                                {category}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            value={newProduct.newCategory}
-                            onChange={(event) =>
-                              setNewProduct((prev) => ({ ...prev, newCategory: event.target.value }))
-                            }
-                            placeholder="Nouvelle categorie"
-                            className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-sm text-[var(--text)]"
-                          />
-                        )}
-                      </div>
-                    </label>
-                    <Input
-                      label="Club/Pays"
-                      value={newProduct.clubOrCountry}
-                      onChange={(value) =>
-                        setNewProduct((prev) => ({ ...prev, clubOrCountry: value }))
-                      }
-                    />
-                    <Input
-                      label="Image URL"
-                      value={newProduct.imageUrl}
-                      onChange={(value) => setNewProduct((prev) => ({ ...prev, imageUrl: value }))}
-                    />
-                    <Input
-                      label="Tailles (S,M,L)"
-                      value={newProduct.sizes}
-                      onChange={(value) => setNewProduct((prev) => ({ ...prev, sizes: value }))}
-                    />
-                    <Input
-                      label="Prix XOF"
-                      value={newProduct.price}
-                      onChange={(value) => setNewProduct((prev) => ({ ...prev, price: value }))}
-                    />
-                    <Input
-                      label="Stock"
-                      value={newProduct.stock}
-                      onChange={(value) => setNewProduct((prev) => ({ ...prev, stock: value }))}
-                    />
-                    <label className="md:col-span-2 flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                      Description
-                      <textarea
-                        value={newProduct.description}
-                        onChange={(event) =>
-                          setNewProduct((prev) => ({
-                            ...prev,
-                            description: event.target.value,
-                          }))
-                        }
-                        className="min-h-24 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-[var(--text)] outline-none"
+                <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+                  <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
+                    <h2 className="text-xl font-semibold text-[var(--text)]">Ajouter un produit</h2>
+                    <form className="mt-4 grid gap-3 md:grid-cols-2" onSubmit={handleAddProduct}>
+                      <Input
+                        label="Nom produit"
+                        value={newProduct.name}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, name: value }))}
                       />
-                    </label>
+                      <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                        Catégorie
+                        <div className="flex gap-2">
+                          <select
+                            value={newProductCategoryMode}
+                            onChange={(event) =>
+                              setNewProductCategoryMode(event.target.value as "existing" | "new")
+                            }
+                            className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                          >
+                            <option value="existing">Existante</option>
+                            <option value="new">Nouvelle</option>
+                          </select>
+                          {newProductCategoryMode === "existing" ? (
+                            <select
+                              value={newProduct.category}
+                              onChange={(event) =>
+                                setNewProduct((prev) => ({ ...prev, category: event.target.value }))
+                              }
+                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                            >
+                              {categoryOptions.map((category) => (
+                                <option key={category} value={category}>
+                                  {category}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={newProduct.newCategory}
+                              onChange={(event) =>
+                                setNewProduct((prev) => ({ ...prev, newCategory: event.target.value }))
+                              }
+                              placeholder="Nouvelle categorie"
+                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                            />
+                          )}
+                        </div>
+                      </label>
+                      <Input
+                        label="Club/Pays"
+                        value={newProduct.clubOrCountry}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, clubOrCountry: value }))}
+                      />
+                      <label className="md:col-span-2 flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+                        Photos du produit
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleNewProductFilesChange}
+                          className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
+                        />
+                        <span className="text-xs text-[var(--text-muted)]">Jusqu&apos;à 6 images, uploadées sur Vercel Blob.</span>
+                      </label>
+                      {parseImageList(newProduct.imageUrl, newProduct.imageUrls).length > 0 ? (
+                        <div className="md:col-span-2 grid grid-cols-3 gap-3">
+                          {parseImageList(newProduct.imageUrl, newProduct.imageUrls).map((src, index) => (
+                            <div key={`${src}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                              <Image
+                                src={src}
+                                alt={`Aper?u produit ${index + 1}`}
+                                width={180}
+                                height={180}
+                                unoptimized
+                                className="h-24 w-full object-cover"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      <Input
+                        label="Tailles"
+                        value={newProduct.sizes}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, sizes: value }))}
+                      />
+                      <Input
+                        label="Prix XOF"
+                        value={newProduct.price}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, price: value }))}
+                      />
+                      <Input
+                        label="Ancien prix XOF"
+                        value={newProduct.oldPrice}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, oldPrice: value }))}
+                      />
+                      <Input
+                        label="Stock"
+                        value={newProduct.stock}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, stock: value }))}
+                      />
+                      <label className="md:col-span-2 flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                        Description
+                        <textarea
+                          value={newProduct.description}
+                          onChange={(event) =>
+                            setNewProduct((prev) => ({
+                              ...prev,
+                              description: event.target.value,
+                            }))
+                          }
+                          className="min-h-24 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text)] outline-none"
+                        />
+                      </label>
 
-                    <button
-                      type="submit"
-                      className="md:col-span-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white"
-                    >
-                      Ajouter le produit
-                    </button>
-                  </form>
-                </div>
-
-                <div>
-                  <h2 className="text-xl font-semibold text-[var(--text)]">Gerer la boutique</h2>
-                  <div className="mt-4 space-y-3">
-                    {db.products.map((product) => (
-                      <article
-                        key={product.id}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-3"
+                      <button
+                        type="submit"
+                        className="md:col-span-2 rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white"
                       >
-                        <div className="grid gap-3 md:grid-cols-[1.4fr_repeat(4,1fr)_auto] md:items-end">
+                        Ajouter le produit
+                      </button>
+                    </form>
+                  </section>
+
+                  <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
+                          Edition produit
+                        </p>
+                        <h2 className="mt-2 text-xl font-semibold text-[var(--text)]">
+                          {selectedProduct ? selectedProduct.name : "Aucun produit choisi"}
+                        </h2>
+                      </div>
+                      {selectedProduct ? (
+                        <button
+                          type="button"
+                          onClick={() => setProductEditor(createEmptyProductEditorState(selectedProduct))}
+                          className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
+                        >
+                          Recharger
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {selectedProduct && productEditor ? (
+                      <div className="mt-5 space-y-4">
+                        <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-muted)]">
+                          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                            Apercu rapide
+                          </p>
+                          <p className="mt-2 text-base font-semibold text-[var(--text)]">
+                            {selectedProduct.category} - {selectedProduct.clubOrCountry}
+                          </p>
+                          <p className="mt-1">Prix actuel: {formatPrice(selectedProduct.price)}</p>
+                          <p>Stock actuel: {selectedProduct.stock}</p>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
                           <Input
                             label="Nom"
-                            value={product.name}
-                            onChange={(value) => updateProduct(product.id, { name: value })}
+                            value={productEditor.name}
+                            onChange={(value) => setProductEditor((prev) => prev ? { ...prev, name: value } : prev)}
+                          />
+                          <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                            Catégorie
+                            <div className="flex gap-2">
+                              <select
+                                value={productEditor.categoryMode}
+                                onChange={(event) =>
+                                  setProductEditor((prev) =>
+                                    prev ? { ...prev, categoryMode: event.target.value as "existing" | "new" } : prev,
+                                  )
+                                }
+                                className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                              >
+                                <option value="existing">Existante</option>
+                                <option value="new">Nouvelle</option>
+                              </select>
+                              {productEditor.categoryMode === "existing" ? (
+                                <select
+                                  value={productEditor.category}
+                                  onChange={(event) =>
+                                    setProductEditor((prev) =>
+                                      prev ? { ...prev, category: event.target.value } : prev,
+                                    )
+                                  }
+                                  className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                                >
+                                  {categoryOptions.map((category) => (
+                                    <option key={category} value={category}>
+                                      {category}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  value={productEditor.customCategory}
+                                  onChange={(event) =>
+                                    setProductEditor((prev) =>
+                                      prev ? { ...prev, customCategory: event.target.value } : prev,
+                                    )
+                                  }
+                                  placeholder="Nouvelle categorie"
+                                  className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                                />
+                              )}
+                            </div>
+                          </label>
+                          <Input
+                            label="Club/Pays"
+                            value={productEditor.clubOrCountry}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, clubOrCountry: value } : prev))
+                            }
+                          />
+                          <label className="md:col-span-2 flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+                            Photos du produit
+                            <input
+                              type="file"
+                              accept="image/*"
+                              multiple
+                              onChange={handleProductEditorFilesChange}
+                              className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
+                            />
+                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistr?es automatiquement.</span>
+                          </label>
+                          {parseImageList(productEditor.primaryImage, productEditor.imageUrls).length > 0 ? (
+                            <div className="md:col-span-2 grid grid-cols-3 gap-3">
+                              {parseImageList(productEditor.primaryImage, productEditor.imageUrls).map((src, index) => (
+                                <div key={`${src}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                                  <Image
+                                    src={src}
+                                    alt={`Aper?u produit ${index + 1}`}
+                                    width={180}
+                                    height={180}
+                                    unoptimized
+                                    className="h-24 w-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                          <Input
+                            label="Tailles"
+                            value={productEditor.sizes}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, sizes: value } : prev))
+                            }
                           />
                           <Input
-                            label="Prix"
-                            value={String(product.price)}
-                            onChange={(value) => {
-                              const num = Number(value);
-                              if (Number.isFinite(num) && num > 0) {
-                                updateProduct(product.id, { price: num });
-                              }
-                            }}
+                            label="Prix XOF"
+                            value={productEditor.price}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, price: value } : prev))
+                            }
+                          />
+                          <Input
+                            label="Ancien prix XOF"
+                            value={productEditor.oldPrice}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, oldPrice: value } : prev))
+                            }
                           />
                           <Input
                             label="Stock"
-                            value={String(product.stock)}
-                            onChange={(value) => {
-                              const num = Number(value);
-                              if (Number.isFinite(num) && num >= 0) {
-                                updateProduct(product.id, { stock: num });
-                              }
-                            }}
+                            value={productEditor.stock}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, stock: value } : prev))
+                            }
                           />
+                          <Input
+                            label="Visuel texte"
+                            value={productEditor.visual}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, visual: value } : prev))
+                            }
+                          />
+                          <label className="md:col-span-2 flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                            Description
+                            <textarea
+                              value={productEditor.description}
+                              onChange={(event) =>
+                                setProductEditor((prev) =>
+                                  prev ? { ...prev, description: event.target.value } : prev,
+                                )
+                              }
+                              className="min-h-24 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[var(--text)] outline-none"
+                            />
+                          </label>
                           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                             <input
                               type="checkbox"
-                              checked={Boolean(product.isPromo)}
+                              checked={productEditor.isPromo}
                               onChange={() =>
-                                updateProduct(product.id, { isPromo: !product.isPromo })
+                                setProductEditor((prev) => (prev ? { ...prev, isPromo: !prev.isPromo } : prev))
                               }
                             />
                             Promo
@@ -977,27 +1299,94 @@ export function AdminDashboard() {
                           <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                             <input
                               type="checkbox"
-                              checked={Boolean(product.isNew)}
+                              checked={productEditor.isNew}
                               onChange={() =>
-                                updateProduct(product.id, { isNew: !product.isNew })
+                                setProductEditor((prev) => (prev ? { ...prev, isNew: !prev.isNew } : prev))
                               }
                             />
                             Nouveau
                           </label>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                            Sauvegarde automatique active
+                          </span>
                           <button
                             type="button"
-                            onClick={() => removeProduct(product.id)}
-                            className="rounded-full border border-red-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-500"
+                            onClick={() => setProductEditor(null)}
+                            className="rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
                           >
-                            Supprimer
+                            Annuler
                           </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-5 text-sm text-[var(--text-muted)]">
+                        Clique sur &quot;Modifier&quot; sur un produit pour ouvrir le panneau d&apos;edition.
+                      </p>
+                    )}
+                  </section>
+                </div>
+
+                <section>
+                  <h2 className="text-xl font-semibold text-[var(--text)]">Boutique actuelle</h2>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {db.products.map((product) => (
+                      <article
+                        key={product.id}
+                        className={`rounded-3xl border p-4 shadow-[var(--card-shadow)] transition ${
+                          productEditor?.productId === product.id
+                            ? "border-[var(--accent)] bg-[var(--surface)]"
+                            : "border-[var(--border)] bg-[var(--surface-muted)]"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-[var(--text)]">{product.name}</p>
+                            <p className="text-xs text-[var(--text-muted)]">
+                              {product.category} - {product.clubOrCountry}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                            {product.stock > 0 ? `Stock ${product.stock}` : "Rupture"}
+                          </span>
+                        </div>
+
+                        <p className="mt-3 text-sm text-[var(--text-muted)]">{product.description}</p>
+
+                        <div className="mt-4 flex items-end justify-between gap-3">
+                          <div>
+                            <p className="text-lg font-semibold text-[var(--text)]">{formatPrice(product.price)}</p>
+                            {product.oldPrice ? (
+                              <p className="text-xs text-[var(--text-muted)] line-through">
+                                {formatPrice(product.oldPrice)}
+                              </p>
+                            ) : null}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setProductEditor(createEmptyProductEditorState(product))}
+                              className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeProduct(product.id)}
+                              className="rounded-full border border-red-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-500"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
                       </article>
                     ))}
                   </div>
-                </div>
+                </section>
 
-                <div>
+                <section>
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
@@ -1010,7 +1399,7 @@ export function AdminDashboard() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </section>
               </div>
             ) : null}
 
@@ -1296,15 +1685,6 @@ export function AdminDashboard() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-      <p className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--text)]">{value}</p>
-    </article>
-  );
-}
-
 function Input({
   label,
   value,
@@ -1362,6 +1742,26 @@ function getActivityScore(client: AdminClient): number {
     client.favoriteProductIds.length * 1500
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

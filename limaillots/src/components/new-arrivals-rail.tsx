@@ -9,6 +9,7 @@ import { Product } from "@/types/store";
 interface NewArrivalsRailProps {
   products: Product[];
   wishlistIds: string[];
+  ratingByProductId: Record<string, number>;
   onAddToCart: (productId: string) => void;
   onToggleWishlist: (productId: string) => void;
 }
@@ -16,6 +17,7 @@ interface NewArrivalsRailProps {
 export function NewArrivalsRail({
   products,
   wishlistIds,
+  ratingByProductId,
   onAddToCart,
   onToggleWishlist,
 }: NewArrivalsRailProps) {
@@ -79,6 +81,7 @@ export function NewArrivalsRail({
             <ProductCard
               product={product}
               isWishlisted={wishlistIds.includes(product.id)}
+              rating={ratingByProductId[product.id] ?? 0}
               onAddToCart={onAddToCart}
               onToggleWishlist={onToggleWishlist}
               href={`/produit/${product.slug}`}
@@ -89,4 +92,3 @@ export function NewArrivalsRail({
     </section>
   );
 }
-

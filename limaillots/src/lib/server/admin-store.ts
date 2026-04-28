@@ -150,11 +150,16 @@ function createReviewId(): string {
   return `rv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function normalizeReviewPhotos(photos?: string[]): string[] {
+  return Array.from(new Set((photos ?? []).map((photo) => photo.trim()).filter(Boolean))).slice(0, 4);
+}
+
 async function upsertClientReviewInState(input: {
   email: string;
   fullName: string;
   rating: number;
   comment: string;
+  photos?: string[];
   productId?: string;
 }): Promise<{ clientId: string; reviewId: string }> {
   const persisted = await readPersistedState();
@@ -165,6 +170,7 @@ async function upsertClientReviewInState(input: {
   const comment = input.comment.trim();
   const productId = input.productId?.trim() || "site-review";
   const reviewId = createReviewId();
+  const photos = normalizeReviewPhotos(input.photos);
 
   const clientIndex = nextState.clients.findIndex((item) => item.email.toLowerCase() === normalizedEmail);
 
@@ -180,8 +186,9 @@ async function upsertClientReviewInState(input: {
           productId,
           rating,
           comment,
-          createdAt: dateLabel,
-          status: "pending",
+            photos,
+            createdAt: dateLabel,
+            status: "pending",
         },
         ...client.reviews,
       ],
@@ -199,6 +206,7 @@ async function upsertClientReviewInState(input: {
           productId,
           rating,
           comment,
+          photos,
           createdAt: dateLabel,
           status: "pending",
         },
@@ -220,6 +228,7 @@ export async function addClientReview(input: {
   fullName: string;
   rating: number;
   comment: string;
+  photos?: string[];
   productId?: string;
 }): Promise<{ ok: boolean; message: string; reviewId?: string; clientId?: string }> {
   const normalizedEmail = input.email.trim().toLowerCase();
@@ -791,6 +800,11 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     total: finalPrice,
     status: "completed",
     promoCode: appliedPromoCode || undefined,
+    items: Array.from(quantityByProduct.entries()).map(([productId, quantity]) => ({
+      productId,
+      quantity,
+      unitPrice: productsById.get(productId)?.price ?? 0,
+    })),
     createdAt: dateLabel,
   });
 
@@ -826,6 +840,9 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     ...getPublicStateShape(currentState),
   };
 }
+
+
+
 
 
 

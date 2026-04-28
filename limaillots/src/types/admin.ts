@@ -2,11 +2,18 @@
 
 export type ReviewStatus = "published" | "pending" | "removed";
 
+export interface AdminChangeHistoryItem {
+  id: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface ClientReview {
   id: string;
   productId: string;
   rating: number;
   comment: string;
+  photos?: string[];
   createdAt: string;
   status: ReviewStatus;
 }
@@ -58,6 +65,11 @@ export interface AdminOrder {
   total: number;
   status: "completed" | "pending";
   promoCode?: string;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
   createdAt: string;
 }
 
@@ -67,6 +79,7 @@ export interface AdminStateData {
   promoCodes: AdminPromoCode[];
   sales: AdminSalesPoint[];
   orders: AdminOrder[];
+  changeHistory: AdminChangeHistoryItem[];
 }
 
 export interface AdminSettings {

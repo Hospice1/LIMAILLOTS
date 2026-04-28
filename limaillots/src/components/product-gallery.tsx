@@ -129,7 +129,7 @@ function resolveGallery(product: Product): string[] {
     return provided;
   }
 
-  if (imageUrl.startsWith("data:") || imageUrl.startsWith("/")) {
+  if (imageUrl) {
     return [imageUrl, ...buildGeneratedGallery(product).slice(1)];
   }
 

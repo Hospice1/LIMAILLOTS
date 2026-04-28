@@ -15,7 +15,6 @@ export interface Product {
   clubOrCountry: string;
   price: number;
   oldPrice?: number;
-  rating: number;
   isNew?: boolean;
   isPromo?: boolean;
   popularity: number;

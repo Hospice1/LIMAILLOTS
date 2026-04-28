@@ -47,6 +47,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   isWishlisted: boolean;
   onAddToCart: (productId: string) => void;
   onToggleWishlist: (productId: string) => void;
+  rating: number;
   href?: string;
 }
 
@@ -55,6 +56,7 @@ export function ProductCard({
   isWishlisted,
   onAddToCart,
   onToggleWishlist,
+  rating,
   href,
 }: ProductCardProps) {
   const isOutOfStock = product.stock <= 0;
@@ -95,9 +97,7 @@ export function ProductCard({
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-lg font-bold text-[var(--text)]">
-            {formatPrice(product.price)}
-          </p>
+          <p className="text-lg font-bold text-[var(--text)]">{formatPrice(product.price)}</p>
           {product.oldPrice && (
             <p className="text-sm text-[var(--text-muted)] line-through">
               {formatPrice(product.oldPrice)}
@@ -108,7 +108,7 @@ export function ProductCard({
         <div className="flex items-center justify-between gap-3">
           <p className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-sm font-semibold text-[var(--text)]">
             <StarIcon className="h-3.5 w-3.5 text-amber-400" />
-            {product.rating.toFixed(1)}
+            {rating.toFixed(1)}
           </p>
 
 <<<<<<< HEAD

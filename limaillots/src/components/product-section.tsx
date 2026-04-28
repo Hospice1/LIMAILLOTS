@@ -1,23 +1,13 @@
-<<<<<<< HEAD
-﻿import { ProductCard } from "@/components/product-card";
-import { Product } from "@/types/store";
-
-interface ProductSectionProps {
-  products: Product[];
-  onAddToCart: (productId: string) => void;
-}
-
-export function ProductSection({ products, onAddToCart }: ProductSectionProps) {
-=======
 ﻿"use client";
 
+import { useState } from "react";
 import { ProductCard } from "@/components/product-card";
 import { Product } from "@/types/store";
-import { useState } from "react";
 
 interface ProductSectionProps {
   products: Product[];
   wishlistIds: string[];
+  ratingByProductId: Record<string, number>;
   onAddToCart: (productId: string) => void;
   onToggleWishlist: (productId: string) => void;
 }
@@ -27,6 +17,7 @@ const INITIAL_VISIBLE_COUNT = 12;
 export function ProductSection({
   products,
   wishlistIds,
+  ratingByProductId,
   onAddToCart,
   onToggleWishlist,
 }: ProductSectionProps) {
@@ -37,7 +28,6 @@ export function ProductSection({
   const canExpand = products.length > INITIAL_VISIBLE_COUNT && !isExpanded;
   const canCollapse = products.length > INITIAL_VISIBLE_COUNT && isExpanded;
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   return (
     <section id="products" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between">
@@ -49,9 +39,6 @@ export function ProductSection({
             Produits recommandés
           </h2>
         </div>
-        <p className="hidden text-sm text-[var(--text-muted)] md:block">
-          Sélection modernisée pour étudiants et fans de football.
-        </p>
       </div>
 
       {products.length === 0 ? (
@@ -60,26 +47,6 @@ export function ProductSection({
             Aucun produit ne correspond à ces filtres.
           </p>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-<<<<<<< HEAD
-            Modifie les filtres pour afficher davantage d’articles.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={onAddToCart}
-            />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-=======
             Modifie les filtres pour afficher davantage d&apos;articles.
           </p>
         </div>
@@ -91,6 +58,7 @@ export function ProductSection({
                 key={product.id}
                 product={product}
                 isWishlisted={wishlistIds.includes(product.id)}
+                rating={ratingByProductId[product.id] ?? 0}
                 onAddToCart={onAddToCart}
                 onToggleWishlist={onToggleWishlist}
                 href={`/produit/${product.slug}`}
@@ -125,5 +93,3 @@ export function ProductSection({
     </section>
   );
 }
-
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)

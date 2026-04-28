@@ -1,22 +1,4 @@
-<<<<<<< HEAD
-﻿"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { CartDrawer } from "@/components/cart-drawer";
-import { CategoryGrid } from "@/components/category-grid";
-import { Footer } from "@/components/footer";
-import { HeroSection } from "@/components/hero-section";
-import { MainNavbar } from "@/components/main-navbar";
-import { MobileMenu } from "@/components/mobile-menu";
-import { ProductSection } from "@/components/product-section";
-import { PromoBanner } from "@/components/promo-banner";
-import { SearchFilters } from "@/components/search-filters";
-import { categoryItems, products, promoMessage } from "@/data/store-data";
-import { applyFilters } from "@/lib/store-utils";
-import { CartItem, Product, ProductFilters, ShopTheme } from "@/types/store";
-
-=======
-
+﻿
 "use client";
 
 import dynamic from "next/dynamic";
@@ -45,12 +27,13 @@ import {
   writeWishlistToStorage,
 } from "@/lib/client-storage";
 import { applyFilters } from "@/lib/store-utils";
+import { getProductRatingSummary } from "@/lib/product-metrics";
 import {
   buildSearchFromFilters,
   parseFilterStateFromSearch,
   TagFilter,
 } from "@/lib/url-filters";
-import { AdminClient, AdminPromoCode } from "@/types/admin";
+import { AdminClient, AdminOrder, AdminPromoCode } from "@/types/admin";
 import { CartItem, Product, ProductFilters, ShopTheme } from "@/types/store";
 
 const CategoryGrid = dynamic(
@@ -71,7 +54,6 @@ const ProductSection = dynamic(
   },
 );
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 const defaultFilters: ProductFilters = {
   search: "",
   category: "Tous",
@@ -81,12 +63,6 @@ const defaultFilters: ProductFilters = {
   sortBy: "popular",
 };
 
-<<<<<<< HEAD
-export default function Home() {
-  const [filters, setFilters] = useState<ProductFilters>(defaultFilters);
-  const [tagFilter, setTagFilter] = useState<"all" | "new" | "promo">("all");
-  const [activeCategoryLabel, setActiveCategoryLabel] = useState("Tous");
-=======
 const fallbackPromoState: AdminPromoCode[] = fallbackPromoCodes.map((promo, index) => ({
   id: `fallback-promo-${index + 1}`,
   code: promo.code,
@@ -117,10 +93,10 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [promoCodes, setPromoCodes] = useState<AdminPromoCode[]>(fallbackPromoState);
   const [storeClients, setStoreClients] = useState<AdminClient[]>(() => createDefaultAdminStateData().clients);
+  const [orders, setOrders] = useState<AdminOrder[]>(() => createDefaultAdminStateData().orders);
   const [databaseBacked, setDatabaseBacked] = useState(false);
   const [storeError, setStoreError] = useState("");
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   const [theme, setTheme] = useState<ShopTheme>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -131,15 +107,6 @@ export default function Home() {
       ? storedTheme
       : "light";
   });
-<<<<<<< HEAD
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const categoryOptions = useMemo(
-    () => Array.from(new Set(products.map((product) => product.category))),
-    [],
-=======
 
   const [cartItems, setCartItems] = useState<CartItem[]>(() => readCartFromStorage());
   const [wishlistIds, setWishlistIds] = useState<string[]>(() => readWishlistFromStorage());
@@ -172,6 +139,7 @@ export default function Home() {
           products?: Product[];
           promoCodes?: AdminPromoCode[];
           clients?: AdminClient[];
+          orders?: AdminOrder[];
         };
         databaseBacked?: boolean;
       };
@@ -192,6 +160,10 @@ export default function Home() {
         setStoreClients(payload.data.clients);
       }
 
+      if (Array.isArray(payload.data.orders)) {
+        setOrders(payload.data.orders);
+      }
+
       setDatabaseBacked(Boolean(payload.databaseBacked));
       setStoreError("");
     } catch {
@@ -201,7 +173,6 @@ export default function Home() {
   const categoryOptions = useMemo(
     () => Array.from(new Set(products.map((product) => product.category))),
     [products],
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   );
 
   const clubsOrCountries = useMemo(
@@ -209,11 +180,7 @@ export default function Home() {
       Array.from(new Set(products.map((product) => product.clubOrCountry))).sort(
         (a, b) => a.localeCompare(b),
       ),
-<<<<<<< HEAD
-    [],
-=======
     [products],
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   );
 
   const sizes = useMemo(
@@ -221,13 +188,17 @@ export default function Home() {
       Array.from(new Set(products.flatMap((product) => product.sizes))).sort(
         (a, b) => a.localeCompare(b, "fr", { numeric: true }),
       ),
-<<<<<<< HEAD
-    [],
-  );
-
-=======
     [products],
   );
+
+  const productRatingById = useMemo(() => {
+    return Object.fromEntries(
+      products.map((product) => [
+        product.id,
+        getProductRatingSummary(product.id, storeClients, orders).rating,
+      ]),
+    ) as Record<string, number>;
+  }, [orders, products, storeClients]);
 
   const customerReviews = useMemo<CustomerReviewEntry[]>(() => {
     return storeClients
@@ -240,6 +211,7 @@ export default function Home() {
             city: client.city || "Client LIMAILLOTS",
             rating: review.rating,
             comment: review.comment,
+            photos: review.photos,
             createdAt: review.createdAt,
           })),
       )
@@ -247,7 +219,6 @@ export default function Home() {
       .slice(0, 6);
   }, [storeClients]);
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   const filteredProducts = useMemo(() => {
     const baseProducts = applyFilters(products, filters);
 
@@ -260,9 +231,6 @@ export default function Home() {
     }
 
     return baseProducts;
-<<<<<<< HEAD
-  }, [filters, tagFilter]);
-=======
   }, [filters, products, tagFilter]);
 
   const activeCategoryLabel = useMemo(() => {
@@ -274,7 +242,6 @@ export default function Home() {
     if (tagFilter === "promo") return "Promotions";
     return "Tous";
   }, [filters.category, tagFilter]);
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 
   const cartProducts = useMemo(
     () =>
@@ -282,17 +249,6 @@ export default function Home() {
         .map((item) => {
           const product = products.find((candidate) => candidate.id === item.productId);
           if (!product) return null;
-<<<<<<< HEAD
-          return { product, quantity: item.quantity };
-        })
-        .filter((item): item is { product: Product; quantity: number } => item !== null),
-    [cartItems],
-  );
-
-  const totalItems = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
-    [cartItems],
-=======
 
           const quantity = Math.min(item.quantity, Math.max(product.stock, 0));
           if (quantity <= 0) return null;
@@ -306,7 +262,6 @@ export default function Home() {
   const totalItems = useMemo(
     () => cartProducts.reduce((sum, item) => sum + item.quantity, 0),
     [cartProducts],
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   );
 
   const totalPrice = useMemo(
@@ -318,8 +273,6 @@ export default function Home() {
     [cartProducts],
   );
 
-<<<<<<< HEAD
-=======
   const activePromo = useMemo(() => {
     if (!appliedPromoCode) {
       return null;
@@ -370,19 +323,11 @@ export default function Home() {
 
   const finalPrice = Math.max(totalPrice - discountAmount, 0);
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("limaillots-theme", theme);
   }, [theme]);
 
-<<<<<<< HEAD
-  function updateFilters(update: Partial<ProductFilters>) {
-    setFilters((previous) => ({ ...previous, ...update }));
-    if (update.category && update.category !== "Tous") {
-      setTagFilter("all");
-      setActiveCategoryLabel(update.category);
-=======
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => {
       void refreshStoreState();
@@ -456,49 +401,19 @@ export default function Home() {
 
     if (update.category && update.category !== "Tous") {
       setTagFilter("all");
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
     }
   }
 
   function handleCategorySelect(item: (typeof categoryItems)[number]) {
-<<<<<<< HEAD
-    setActiveCategoryLabel(item.label);
-
-=======
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
     const targetCategory = item.targetCategory;
     if (targetCategory) {
       setTagFilter("all");
       setFilters((previous) => ({ ...previous, category: targetCategory }));
-<<<<<<< HEAD
-=======
       window.requestAnimationFrame(jumpToProducts);
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
       return;
     }
 
     const targetTag = item.targetTag;
-<<<<<<< HEAD
-    if (targetTag) {
-      setTagFilter(targetTag);
-      if (targetTag === "new") {
-        setFilters((previous) => ({
-          ...previous,
-          sortBy: "newest",
-          category: "Tous",
-        }));
-      }
-      if (targetTag === "promo") {
-        setFilters((previous) => ({ ...previous, category: "Tous" }));
-      }
-    }
-  }
-
-  function addToCart(productId: string) {
-    setCartItems((previous) => {
-      const existing = previous.find((item) => item.productId === productId);
-      if (existing) {
-=======
     if (!targetTag) {
       return;
     }
@@ -530,7 +445,6 @@ export default function Home() {
           return previous;
         }
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
         return previous.map((item) =>
           item.productId === productId
             ? { ...item, quantity: item.quantity + 1 }
@@ -545,14 +459,6 @@ export default function Home() {
   }
 
   function incrementQuantity(productId: string) {
-<<<<<<< HEAD
-    setCartItems((previous) =>
-      previous.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item,
-      ),
-=======
     const product = products.find((item) => item.id === productId);
     if (!product) return;
 
@@ -562,7 +468,6 @@ export default function Home() {
         if (item.quantity >= product.stock) return item;
         return { ...item, quantity: item.quantity + 1 };
       }),
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
     );
   }
 
@@ -584,8 +489,6 @@ export default function Home() {
     );
   }
 
-<<<<<<< HEAD
-=======
   function toggleWishlist(productId: string) {
     setWishlistIds((previous) =>
       previous.includes(productId)
@@ -685,7 +588,6 @@ export default function Home() {
     }
   }
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
   function jumpToProducts() {
     const section = document.getElementById("products");
     if (section) {
@@ -710,10 +612,7 @@ export default function Home() {
         sizes={sizes}
         theme={theme}
         resultCount={filteredProducts.length}
-<<<<<<< HEAD
-=======
         wishlistCount={wishlistIds.length}
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
         onThemeToggle={() =>
           setTheme((currentTheme) =>
             currentTheme === "light" ? "dark" : "light",
@@ -722,11 +621,6 @@ export default function Home() {
         onFiltersChange={updateFilters}
       />
 
-<<<<<<< HEAD
-      <main>
-        <HeroSection onCtaClick={jumpToProducts} />
-
-=======
       {!databaseBacked || storeError ? (
         <div className="mx-auto mt-4 max-w-7xl rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-700">
           {storeError || "DATABASE_URL non configuree: mode demonstration actif."}
@@ -739,25 +633,23 @@ export default function Home() {
         <NewArrivalsRail
           products={newArrivalProducts}
           wishlistIds={wishlistIds}
+          ratingByProductId={productRatingById}
           onAddToCart={addToCart}
           onToggleWishlist={toggleWishlist}
         />
 
 
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
         <CategoryGrid
           items={categoryItems}
           activeLabel={activeCategoryLabel}
           onSelect={handleCategorySelect}
         />
 
-<<<<<<< HEAD
-        <ProductSection products={filteredProducts} onAddToCart={addToCart} />
-=======
         <ProductSection
           products={filteredProducts}
           wishlistIds={wishlistIds}
+          ratingByProductId={productRatingById}
           onAddToCart={addToCart}
           onToggleWishlist={toggleWishlist}
         />
@@ -766,7 +658,6 @@ export default function Home() {
           reviews={customerReviews}
           onSubmitted={() => void refreshStoreState()}
         />
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
       </main>
 
       <Footer />
@@ -783,26 +674,15 @@ export default function Home() {
         items={cartProducts}
         totalItems={totalItems}
         totalPrice={totalPrice}
-<<<<<<< HEAD
-=======
         discountAmount={discountAmount}
         finalPrice={finalPrice}
         appliedPromoCode={activePromo?.code ?? ""}
         promoMessage={promoMessageForDrawer}
         isApplyingPromo={isApplyingPromo}
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
         onClose={() => setIsCartOpen(false)}
         onIncrement={incrementQuantity}
         onDecrement={decrementQuantity}
         onRemove={removeFromCart}
-<<<<<<< HEAD
-      />
-    </div>
-  );
-}
-
-
-=======
         onApplyPromo={applyPromo}
         onCheckout={handleCheckout}
       />
@@ -821,4 +701,16 @@ export default function Home() {
 
 
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
+
+
+
+
+
+
+
+
+
+
+
+
+

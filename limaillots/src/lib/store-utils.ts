@@ -11,15 +11,7 @@ export function formatPrice(amount: number): string {
 export function applyFilters(products: Product[], filters: ProductFilters): Product[] {
   return products
     .filter((product) => {
-<<<<<<< HEAD
-      const searchNeedle = filters.search.trim().toLowerCase();
-      const matchesSearch =
-        searchNeedle.length === 0 ||
-        product.name.toLowerCase().includes(searchNeedle) ||
-        product.description.toLowerCase().includes(searchNeedle);
-=======
       const matchesSearch = matchesProductSearch(product, filters.search);
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 
       const matchesCategory =
         filters.category === "Tous" || product.category === filters.category;
@@ -42,28 +34,19 @@ export function applyFilters(products: Product[], filters: ProductFilters): Prod
       );
     })
     .sort((a, b) => {
-<<<<<<< HEAD
-      if (filters.sortBy === "price-asc") return a.price - b.price;
-      if (filters.sortBy === "price-desc") return b.price - a.price;
-      if (filters.sortBy === "newest") return b.noveltyRank - a.noveltyRank;
-      return b.popularity - a.popularity;
-    });
-}
-
-=======
       if (filters.sortBy === "price-asc") {
-        return a.price - b.price || b.rating - a.rating;
+        return a.price - b.price || b.popularity - a.popularity;
       }
 
       if (filters.sortBy === "price-desc") {
-        return b.price - a.price || b.rating - a.rating;
+        return b.price - a.price || b.popularity - a.popularity;
       }
 
       if (filters.sortBy === "newest") {
         return b.noveltyRank - a.noveltyRank || b.popularity - a.popularity;
       }
 
-      return b.popularity - a.popularity || b.rating - a.rating;
+      return b.popularity - a.popularity || b.noveltyRank - a.noveltyRank;
     });
 }
 
@@ -71,7 +54,6 @@ export function findProductBySlug(slug: string, products: Product[]): Product | 
   return products.find((product) => product.slug === slug);
 }
 
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
 function matchPriceRange(price: number, range: string): boolean {
   if (range === "Tous") return true;
   if (range === "<20000") return price < 20000;
@@ -79,10 +61,6 @@ function matchPriceRange(price: number, range: string): boolean {
   if (range === "40000-70000") return price >= 40000 && price <= 70000;
   if (range === ">70000") return price > 70000;
   return true;
-<<<<<<< HEAD
-}
-
-=======
 }
 
 function matchesProductSearch(product: Product, rawSearch: string): boolean {
@@ -167,4 +145,4 @@ function levenshtein(a: string, b: string): number {
 
   return matrix[a.length][b.length];
 }
->>>>>>> b0c67ae (feat: launch LIMAILLOTS storefront)
+

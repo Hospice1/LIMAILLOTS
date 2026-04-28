@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { ArrowRightIcon, StarIcon, UserIcon } from "@/components/icons";
 
 export interface CustomerReviewEntry {
@@ -9,6 +10,7 @@ export interface CustomerReviewEntry {
   city: string;
   rating: number;
   comment: string;
+  photos?: string[];
   createdAt: string;
 }
 
@@ -32,6 +34,8 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
   const [email, setEmail] = useState("");
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [submitMessage, setSubmitMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,7 +51,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
           setEmail(payload.user.email ?? "");
         }
       } catch {
-        // Silent fallback: anonymous review form.
+        // Fallback anonyme.
       } finally {
         setIsLoadingSession(false);
       }
@@ -56,10 +60,32 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
     void loadSession();
   }, []);
 
+
+
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
     return reviews.reduce((sum, item) => sum + item.rating, 0) / reviews.length;
   }, [reviews]);
+
+  function fileToPreview(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(reader.error ?? new Error("Impossible de lire l'image."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, 4);
+
+    setSelectedPhotos(files);
+    event.target.value = "";
+    setSubmitMessage("");
+    setPhotoPreviews(await Promise.all(files.map((file) => fileToPreview(file))));
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,17 +104,16 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
     setIsSubmitting(true);
 
     try {
+      const formData = new FormData();
+      formData.set("fullName", fullName);
+      formData.set("email", email);
+      formData.set("rating", rating);
+      formData.set("comment", comment);
+      selectedPhotos.forEach((file) => formData.append("photos", file));
+
       const response = await fetch("/api/store/reviews", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          fullName,
-          email,
-          rating: Number(rating),
-          comment,
-        }),
+        body: formData,
       });
 
       const payload = (await response.json()) as { ok?: boolean; message?: string };
@@ -99,6 +124,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
       }
 
       setComment("");
+      setSelectedPhotos([]);
       setSubmitMessage(payload.message ?? "Avis envoyé.");
       onSubmitted();
     } catch {
@@ -165,6 +191,25 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
                     </div>
                   </div>
                   <p className="mt-4 text-sm leading-6 text-[var(--text)]">{review.comment}</p>
+                  {review.photos?.length ? (
+                    <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {review.photos.map((src, index) => (
+                        <div
+                          key={`${review.id}-photo-${index}`}
+                          className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]"
+                        >
+                          <Image
+                            src={src}
+                            alt={`${review.author} photo ${index + 1}`}
+                            width={160}
+                            height={160}
+                            unoptimized
+                            className="h-24 w-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </article>
               ))
             )}
@@ -226,10 +271,38 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
                 className="min-h-32 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-[var(--text)] outline-none"
               />
             </label>
+            <label className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+              Photos dans le maillot
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handlePhotoChange}
+                className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
+              />
+            </label>
 
-            {submitMessage ? (
-              <p className="text-sm text-[var(--text-muted)]">{submitMessage}</p>
+            {photoPreviews.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {photoPreviews.map((src, index) => (
+                  <div
+                    key={`${src}-${index}`}
+                    className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]"
+                  >
+                    <Image
+                      src={src}
+                      alt={`Photo sélectionnée ${index + 1}`}
+                      width={160}
+                      height={160}
+                      unoptimized
+                      className="h-28 w-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
             ) : null}
+
+            {submitMessage ? <p className="text-sm text-[var(--text-muted)]">{submitMessage}</p> : null}
 
             <button
               type="submit"
@@ -280,3 +353,6 @@ function Input({
     </label>
   );
 }
+
+
+

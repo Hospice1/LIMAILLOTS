@@ -1,4 +1,4 @@
-import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
+﻿import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
 import {
   AdminClient,
   AdminPromoCode,
@@ -170,6 +170,9 @@ function normalizeClientReviews(
         typeof candidate.comment === "string"
           ? candidate.comment
           : fallbackReview?.comment ?? "",
+      photos: Array.isArray(candidate.photos)
+        ? candidate.photos.filter((photo): photo is string => typeof photo === "string").slice(0, 4)
+        : fallbackReview?.photos ?? [],
       createdAt:
         typeof candidate.createdAt === "string"
           ? candidate.createdAt
@@ -177,6 +180,33 @@ function normalizeClientReviews(
       status: normalizeReviewStatus(candidate.status ?? fallbackReview?.status),
     };
   });
+}
+
+function normalizeOrderItems(
+  orderItems: unknown,
+  fallbackItems: AdminStateData["orders"][number]["items"],
+): AdminStateData["orders"][number]["items"] {
+  if (!Array.isArray(orderItems) || orderItems.length === 0) {
+    return structuredClone(fallbackItems);
+  }
+
+  return orderItems
+    .map((item, index) => {
+      const candidate = item as Partial<{ productId: string; quantity: number; unitPrice: number }>;
+      return {
+        productId:
+          typeof candidate.productId === 'string' ? candidate.productId : fallbackItems[index]?.productId ?? '',
+        quantity:
+          typeof candidate.quantity === 'number' && Number.isFinite(candidate.quantity)
+            ? Math.max(1, Math.floor(candidate.quantity))
+            : fallbackItems[index]?.quantity ?? 1,
+        unitPrice:
+          typeof candidate.unitPrice === 'number' && Number.isFinite(candidate.unitPrice)
+            ? Math.max(0, Math.floor(candidate.unitPrice))
+            : fallbackItems[index]?.unitPrice ?? 0,
+      };
+    })
+    .filter((item) => item.productId.length > 0);
 }
 export function createDefaultPromoCodes(): AdminPromoCode[] {
   return basePromoCodes.map((promo, index) => ({
@@ -201,27 +231,40 @@ export function createDefaultAdminStateData(): AdminStateData {
       {
         id: "ord-2026-0412",
         clientId: "cl-001",
-        total: 68990,
+        total: 55980,
         status: "completed",
         promoCode: "LIMAILL0T5",
+        items: [
+          { productId: "france-away-2425", quantity: 1, unitPrice: 42990 },
+          { productId: "chaussettes-compression-pack2", quantity: 1, unitPrice: 12990 },
+        ],
         createdAt: "2026-04-12",
       },
       {
         id: "ord-2026-0418",
         clientId: "cl-004",
-        total: 95990,
+        total: 66980,
         status: "completed",
         promoCode: "CAMPUS15",
+        items: [
+          { productId: "real-authentic-2425", quantity: 1, unitPrice: 47990 },
+          { productId: "protege-tibias-carbon", quantity: 1, unitPrice: 18990 },
+        ],
         createdAt: "2026-04-18",
       },
       {
         id: "ord-2026-0424",
         clientId: "cl-002",
-        total: 44990,
+        total: 88970,
         status: "pending",
+        items: [
+          { productId: "controlpulse-ag", quantity: 1, unitPrice: 68990 },
+          { productId: "gourde-thermique-750", quantity: 2, unitPrice: 9990 },
+        ],
         createdAt: "2026-04-24",
       },
     ],
+    changeHistory: [],
   };
 }
 
@@ -259,8 +302,45 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
     : fallback.sales;
 
   const orders = Array.isArray(parsed.orders)
-    ? parsed.orders
+    ? parsed.orders.map((order, index) => {
+        const fallbackOrder = fallback.orders[index];
+        const candidate = order as Partial<AdminStateData["orders"][number]>;
+
+        return {
+          id: typeof candidate.id === "string" ? candidate.id : fallbackOrder?.id ?? `ord-${index + 1}`,
+          clientId:
+            typeof candidate.clientId === "string" ? candidate.clientId : fallbackOrder?.clientId ?? "",
+          total:
+            typeof candidate.total === "number" && Number.isFinite(candidate.total)
+              ? Math.max(0, Math.floor(candidate.total))
+              : fallbackOrder?.total ?? 0,
+          status: candidate.status === "pending" ? "pending" : "completed",
+          promoCode:
+            typeof candidate.promoCode === "string" && candidate.promoCode.trim()
+              ? candidate.promoCode.trim()
+              : fallbackOrder?.promoCode,
+          items: normalizeOrderItems(candidate.items, fallbackOrder?.items ?? []),
+          createdAt:
+            typeof candidate.createdAt === "string"
+              ? candidate.createdAt
+              : fallbackOrder?.createdAt ?? new Date().toISOString().slice(0, 10),
+        } as AdminStateData["orders"][number];
+      })
     : fallback.orders;
+
+  const changeHistory = Array.isArray(parsed.changeHistory)
+    ? parsed.changeHistory.map((item, index) => {
+        const candidate = item as Partial<{ id: string; message: string; createdAt: string }>;
+        return {
+          id: typeof candidate.id === "string" ? candidate.id : `chg-${index + 1}`,
+          message: typeof candidate.message === "string" ? candidate.message : "Modification enregistree.",
+          createdAt:
+            typeof candidate.createdAt === "string"
+              ? candidate.createdAt
+              : new Date().toISOString().slice(0, 10),
+        } as AdminStateData["changeHistory"][number];
+      })
+    : fallback.changeHistory;
 
   return {
     products,
@@ -268,5 +348,11 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
     promoCodes,
     sales,
     orders,
+    changeHistory,
   };
 }
+
+
+
+
+

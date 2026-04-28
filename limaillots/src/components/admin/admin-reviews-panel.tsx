@@ -1,4 +1,5 @@
-﻿import { StarIcon, TrashIcon } from "@/components/icons";
+﻿import Image from "next/image";
+import { StarIcon, TrashIcon } from "@/components/icons";
 import { ReviewStatus } from "@/types/admin";
 
 export interface AdminReviewItem {
@@ -10,6 +11,7 @@ export interface AdminReviewItem {
   productId: string;
   rating: number;
   comment: string;
+  photos?: string[];
   createdAt: string;
   status: ReviewStatus;
 }
@@ -82,6 +84,23 @@ export function AdminReviewsPanel({ reviews, onChangeStatus }: AdminReviewsPanel
               </div>
 
               <p className="mt-4 text-sm leading-6 text-[var(--text)]">{review.comment}</p>
+
+              {review.photos?.length ? (
+                <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {review.photos.map((src, index) => (
+                    <div key={`${review.id}-photo-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                      <Image
+                        src={src}
+                        alt={`${review.author} photo ${index + 1}`}
+                        width={160}
+                        height={160}
+                        unoptimized
+                        className="h-20 w-full object-cover"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : null}
 
               {isFlagged ? (
                 <p className="mt-3 text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
