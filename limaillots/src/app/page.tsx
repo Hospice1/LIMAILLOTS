@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import dynamic from "next/dynamic";
@@ -433,6 +433,22 @@ export default function Home() {
     setFilters((previous) => ({ ...previous, category: "Tous" }));
   }
 
+  function handleHeroQuickCategorySelect(value: "Maillots" | "Crampons" | "Accessoires") {
+    const searchByType = {
+      Maillots: "maillot",
+      Crampons: "crampons",
+      Accessoires: "accessoires",
+    } as const;
+
+    setTagFilter("all");
+    setFilters((previous) => ({
+      ...previous,
+      search: searchByType[value],
+      category: value === "Crampons" ? "Crampons" : value === "Accessoires" ? "Accessoires" : "Tous",
+      sortBy: value === "Maillots" ? "popular" : previous.sortBy,
+    }));
+    window.requestAnimationFrame(jumpToProducts);
+  }
   function addToCart(productId: string) {
     const product = products.find((item) => item.id === productId);
     if (!product || product.stock <= 0) return;
@@ -546,6 +562,18 @@ export default function Home() {
     }
 
     try {
+      const sessionResponse = await fetch("/api/client/session", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const sessionPayload = (await sessionResponse.json()) as { authenticated?: boolean };
+      if (!sessionResponse.ok || !sessionPayload.authenticated) {
+        setPromoMessageText("Connecte-toi pour finaliser ta commande.");
+        router.push(`/compte/connexion?next=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
       const response = await fetch("/api/store/checkout", {
         method: "POST",
         headers: {
@@ -587,7 +615,6 @@ export default function Home() {
       setPromoMessageText("Impossible de finaliser la commande pour le moment.");
     }
   }
-
   function jumpToProducts() {
     const section = document.getElementById("products");
     if (section) {
@@ -628,7 +655,7 @@ export default function Home() {
       ) : null}
 
       <main>
-        <HeroSection onCtaClick={jumpToProducts} />
+        <HeroSection onCtaClick={jumpToProducts} onQuickCategorySelect={handleHeroQuickCategorySelect} />
 
         <NewArrivalsRail
           products={newArrivalProducts}

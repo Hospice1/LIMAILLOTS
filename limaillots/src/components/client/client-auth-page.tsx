@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { LimaillotsLogo } from "@/components/limaillots-logo";
 import {
   loginClient,
@@ -12,8 +12,13 @@ import {
 
 type AuthMode = "login" | "register" | "recovery";
 
-export function ClientAuthPage() {
+interface ClientAuthPageProps {
+  nextPath: string;
+}
+
+export function ClientAuthPage({ nextPath }: ClientAuthPageProps) {
   const router = useRouter();
+
   const [mode, setMode] = useState<AuthMode>("login");
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,7 +51,7 @@ export function ClientAuthPage() {
       }
 
       setFeedback("Connexion reussie. Redirection...");
-      window.setTimeout(() => router.push("/"), 400);
+      window.setTimeout(() => router.push(nextPath), 400);
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +87,7 @@ export function ClientAuthPage() {
       }
 
       setFeedback("Compte cree. Redirection...");
-      window.setTimeout(() => router.push("/"), 400);
+      window.setTimeout(() => router.push(nextPath), 400);
     } finally {
       setIsSubmitting(false);
     }
@@ -146,17 +151,13 @@ export function ClientAuthPage() {
             <Field
               label="Email"
               value={loginForm.email}
-              onChange={(value) =>
-                setLoginForm((prev) => ({ ...prev, email: value }))
-              }
+              onChange={(value) => setLoginForm((prev) => ({ ...prev, email: value }))}
             />
             <Field
               label="Mot de passe"
               type="password"
               value={loginForm.password}
-              onChange={(value) =>
-                setLoginForm((prev) => ({ ...prev, password: value }))
-              }
+              onChange={(value) => setLoginForm((prev) => ({ ...prev, password: value }))}
             />
             <button
               type="submit"
@@ -176,51 +177,39 @@ export function ClientAuthPage() {
             <Field
               label="Nom complet"
               value={registerForm.fullName}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, fullName: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, fullName: value }))}
             />
             <Field
               label="Email"
               value={registerForm.email}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, email: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, email: value }))}
             />
             <Field
               label="Telephone"
               value={registerForm.phone}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, phone: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, phone: value }))}
             />
             <Field
               label="Ville"
               value={registerForm.city}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, city: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, city: value }))}
             />
             <Field
               label="Mot de passe"
               type="password"
               value={registerForm.password}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, password: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, password: value }))}
             />
             <Field
               label="Confirmation"
               type="password"
               value={registerForm.confirmPassword}
-              onChange={(value) =>
-                setRegisterForm((prev) => ({ ...prev, confirmPassword: value }))
-              }
+              onChange={(value) => setRegisterForm((prev) => ({ ...prev, confirmPassword: value }))}
             />
             <button
               type="submit"
               disabled={isSubmitting}
-              className="md:col-span-2 w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="w-full rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2"
             >
               Creer mon compte
             </button>

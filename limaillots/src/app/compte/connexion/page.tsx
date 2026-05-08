@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ClientLoginPage() {
-  return <ClientAuthPage />;
+export default function ClientLoginPage({
+  searchParams,
+}: {
+  searchParams?: { next?: string };
+}) {
+  const raw = searchParams?.next ?? "/";
+  const nextPath = raw.startsWith("/") ? raw : "/";
+
+  return <ClientAuthPage nextPath={nextPath} />;
 }

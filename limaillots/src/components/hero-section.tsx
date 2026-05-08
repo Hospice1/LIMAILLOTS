@@ -5,30 +5,45 @@ import { ArrowRightIcon } from "@/components/icons";
 
 interface HeroSectionProps {
   onCtaClick: () => void;
+  onQuickCategorySelect: (value: "Maillots" | "Crampons" | "Accessoires") => void;
 }
 
-export function HeroSection({ onCtaClick }: HeroSectionProps) {
+export function HeroSection({ onCtaClick, onQuickCategorySelect }: HeroSectionProps) {
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-8 pt-10 sm:px-6 md:grid-cols-2 md:items-center lg:px-8">
       <div>
         <p className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
           Boutique football premium
         </p>
-        <h1 className="mt-5 text-4xl font-semibold leading-tight text-[var(--text)] md:text-5xl lg:text-6xl font-hero">
+        <h1 className="mt-5 text-4xl font-hero font-semibold leading-tight text-[var(--text)] md:text-5xl lg:text-6xl">
           LIMAILLOTS, la nouvelle base des etudiants fans de foot.
         </h1>
         <p className="mt-5 max-w-xl text-base text-[var(--text-muted)] md:text-lg">
           Maillots iconiques, crampons performants et accessoires utiles au quotidien.
           Design propre, selection moderne et experience d&apos;achat fluide sur mobile et desktop.
         </p>
-        <button
-          type="button"
-          onClick={onCtaClick}
-          className="mt-7 inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:translate-x-0.5"
-        >
-          Acheter maintenant
-          <ArrowRightIcon className="h-4 w-4" />
-        </button>
+        <div className="mt-7 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={onCtaClick}
+            className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:translate-x-0.5"
+          >
+            Acheter maintenant
+            <ArrowRightIcon className="h-4 w-4" />
+          </button>
+          <div className="flex flex-wrap gap-2">
+            {(["Maillots", "Crampons", "Accessoires"] as const).map((label) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onQuickCategorySelect(label)}
+                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="relative">

@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --bg: #eef3fb;
@@ -88,4 +88,18 @@ body {
 
 .animate-float-slow {
   animation: float-slow 9s ease-in-out infinite;
+}
+
+@keyframes marquee-ltr {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.promo-marquee {
+  animation: marquee-ltr 18s linear infinite;
+  will-change: transform;
 }

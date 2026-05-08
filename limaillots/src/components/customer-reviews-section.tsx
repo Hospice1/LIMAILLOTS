@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
@@ -51,7 +51,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
           setEmail(payload.user.email ?? "");
         }
       } catch {
-        // Fallback anonyme.
+        // Anonymous fallback.
       } finally {
         setIsLoadingSession(false);
       }
@@ -59,8 +59,6 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
 
     void loadSession();
   }, []);
-
-
 
   const averageRating = useMemo(() => {
     if (reviews.length === 0) return 0;
@@ -125,6 +123,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
 
       setComment("");
       setSelectedPhotos([]);
+      setPhotoPreviews([]);
       setSubmitMessage(payload.message ?? "Avis envoyé.");
       onSubmitted();
     } catch {
@@ -145,7 +144,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
             <div>
               <h2 className="text-3xl font-semibold text-[var(--text)]">Ils nous ont fait confiance</h2>
               <p className="mt-2 max-w-xl text-sm text-[var(--text-muted)] md:text-base">
-                Des retours vrais, publiés après validation pour garder une boutique propre et crédible.
+                Des retours vrais, publies apres validation pour garder une boutique propre et credible.
               </p>
             </div>
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3 text-right">
@@ -153,14 +152,14 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
               <p className="mt-1 text-2xl font-semibold text-[var(--text)]">
                 {averageRating ? averageRating.toFixed(1) : "0.0"}/5
               </p>
-              <p className="text-xs text-[var(--text-muted)]">{reviews.length} avis publiés</p>
+              <p className="text-xs text-[var(--text-muted)]">{reviews.length} avis publies</p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {reviews.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-6 text-sm text-[var(--text-muted)] md:col-span-2">
-                Aucun avis publié pour le moment.
+                Aucun avis publie pour le moment.
               </div>
             ) : (
               reviews.map((review) => (
@@ -224,10 +223,10 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
             Laisser un avis
           </p>
           <h3 className="mt-3 text-2xl font-semibold text-[var(--text)]">
-            Partage ton expérience avec LIMAILLOTS
+            Partage ton experience avec LIMAILLOTS
           </h3>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Ton avis sera envoyé en modération avant publication.
+            Ton avis sera envoye en moderation avant publication.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -237,7 +236,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
               onChange={setFullName}
               placeholder="Ton nom"
               disabled={isConnected}
-              helper={isConnected ? "Compte connecté" : undefined}
+              helper={isConnected ? "Compte connecte" : undefined}
             />
             <Input
               label="Email"
@@ -246,28 +245,40 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
               placeholder="ton@email.com"
               type="email"
               disabled={isConnected}
-              helper={isConnected ? "Adresse liée au compte" : undefined}
+              helper={isConnected ? "Adresse liee au compte" : undefined}
             />
-            <label className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
-              Note
-              <select
-                value={rating}
-                onChange={(event) => setRating(event.target.value)}
-                className="h-11 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-[var(--text)] outline-none"
-              >
-                <option value="5">5 - Excellent</option>
-                <option value="4">4 - Très bien</option>
-                <option value="3">3 - Correct</option>
-                <option value="2">2 - Moyen</option>
-                <option value="1">1 - Décevant</option>
-              </select>
-            </label>
+
+            <div className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
+              <span>Note</span>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const value = index + 1;
+                  const active = value <= Number(rating);
+
+                  return (
+                    <button
+                      key={`rating-${value}`}
+                      type="button"
+                      onClick={() => setRating(String(value))}
+                      className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition ${active ? "border-amber-300 bg-amber-50" : "border-[var(--border)] bg-[var(--surface-muted)]"}`}
+                      aria-label={`${value} etoile${value > 1 ? "s" : ""}`}
+                    >
+                      <StarIcon className={`h-5 w-5 ${active ? "text-amber-400" : "text-[var(--border)]"}`} />
+                    </button>
+                  );
+                })}
+                <span className="ml-1 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
+                  {rating}/5
+                </span>
+              </div>
+            </div>
+
             <label className="flex flex-col gap-2 text-sm text-[var(--text-muted)]">
               Ton avis
               <textarea
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                placeholder="Décris ton expérience avec la boutique"
+                placeholder="Decris ton experience avec la boutique"
                 className="min-h-32 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3 text-[var(--text)] outline-none"
               />
             </label>
@@ -291,7 +302,7 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
                   >
                     <Image
                       src={src}
-                      alt={`Photo sélectionnée ${index + 1}`}
+                      alt={`Photo selectionnee ${index + 1}`}
                       width={160}
                       height={160}
                       unoptimized
@@ -353,6 +364,3 @@ function Input({
     </label>
   );
 }
-
-
-
