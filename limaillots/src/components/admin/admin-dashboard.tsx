@@ -7,7 +7,7 @@ import Image from "next/image";
 import { LimaillotsLogo } from "@/components/limaillots-logo";
 import { AdminReviewsPanel, type AdminReviewItem } from "@/components/admin/admin-reviews-panel";
 import { formatPrice } from "@/lib/store-utils";
-import { AdminClient, AdminDatabase, AdminPromoCode, ReviewStatus } from "@/types/admin";
+import { AdminClient, AdminDatabase, AdminPromoCode, AdminSalesPoint, ReviewStatus } from "@/types/admin";
 import { categoryItems } from "@/data/store-data";
 import { Product } from "@/types/store";
 
@@ -266,6 +266,27 @@ export function AdminDashboard() {
     [db.clients],
   );
 
+  const overviewSales = useMemo(() => db.sales.slice(-8), [db.sales]);
+  const overviewSalesStats = useMemo(() => {
+    const totalOrders = db.sales.reduce((sum, point) => sum + point.orders, 0);
+    const totalRevenue = db.sales.reduce((sum, point) => sum + point.revenue, 0);
+    const peakPoint = db.sales.reduce<AdminSalesPoint | null>((currentPeak, point) => {
+      if (!currentPeak || point.orders > currentPeak.orders) {
+        return point;
+      }
+
+      return currentPeak;
+    }, null);
+
+    return {
+      totalOrders,
+      totalRevenue,
+      peakPoint,
+    };
+  }, [db.sales]);
+  const overviewMaxOrders = useMemo(() => {
+    return Math.max(...overviewSales.map((point) => point.orders), 1);
+  }, [overviewSales]);
   const promoByUsage = useMemo(
     () => [...db.promoCodes].sort((a, b) => b.usedCount - a.usedCount),
     [db.promoCodes],
@@ -868,6 +889,27 @@ export function AdminDashboard() {
     void persist(nextDb, "Notification client envoyee.");
   }
 
+  async function resetSalesEvolution() {
+    const confirmed = window.confirm(
+      "Reinitialiser le graphique des commandes ? Les clients, commandes et produits restent intacts.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    const nextDb: AdminDatabase = {
+      ...db,
+      sales: [],
+      changeHistory: [
+        createChangeHistoryItem("Graphique des commandes reinitialise."),
+        ...db.changeHistory,
+      ],
+    };
+
+    void persist(nextDb, "Graphique des commandes reinitialise.");
+  }
+
   async function deleteSelectedClient() {
     if (!selectedClient) {
       setFeedback("Selectionne un client.");
@@ -1063,12 +1105,79 @@ export function AdminDashboard() {
             ) : null}
 
             {activeTab === "overview" ? (
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-8 text-center">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Vue globale</p>
-                <h2 className="mt-3 text-2xl font-semibold text-[var(--text)]">Aucune donnee affichee</h2>
-                <p className="mt-2 text-sm text-[var(--text-muted)]">
-                  Cette section reste vide pour eviter d&apos;exposer des donnees sensibles ou partielles.
-                </p>
+              <div className="space-y-6">
+                <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-6 shadow-[var(--card-shadow)]">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Vue globale</p>
+                      <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">Evolution des commandes</h2>
+                      <p className="mt-2 text-sm text-[var(--text-muted)]">
+                        Graphique reinitialisable des commandes de la boutique, mis a jour automatiquement.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetSalesEvolution}
+                      className="rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
+                    >
+                      Reinitialiser le graphique
+                    </button>
+                  </div>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {overviewSales.length === 0 ? (
+                      <div className="xl:col-span-4 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-10 text-center text-sm text-[var(--text-muted)]">
+                        Aucun historique de commandes pour le moment. Le graphique se remplira apres les prochaines ventes.
+                      </div>
+                    ) : (
+                      overviewSales.map((point) => {
+                        const height = Math.max((point.orders / overviewMaxOrders) * 100, 10);
+
+                        return (
+                          <article key={point.period} className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
+                            <div className="flex h-40 items-end">
+                              <div className="flex h-full w-full items-end rounded-2xl bg-[linear-gradient(180deg,rgba(15,23,42,0.04),rgba(15,23,42,0.01))] p-2">
+                                <div
+                                  className="w-full rounded-t-2xl bg-gradient-to-t from-[var(--accent)] via-cyan-500 to-emerald-400 shadow-[0_18px_28px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:scale-[1.02]"
+                                  style={{ height: `${height}%` }}
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-3 text-center">
+                              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{point.period}</p>
+                              <p className="mt-1 text-sm font-semibold text-[var(--text)]">{point.orders} commandes</p>
+                              <p className="text-xs text-[var(--text-muted)]">{formatPrice(point.revenue)}</p>
+                            </div>
+                          </article>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+
+                <section className="grid gap-4 lg:grid-cols-3">
+                  <article className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Commandes totales</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--text)]">{overviewSalesStats.totalOrders}</p>
+                    <p className="mt-2 text-sm text-[var(--text-muted)]">Depuis le debut de la periode suivie.</p>
+                  </article>
+
+                  <article className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Chiffre d&apos;affaires</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--text)]">{formatPrice(overviewSalesStats.totalRevenue)}</p>
+                    <p className="mt-2 text-sm text-[var(--text-muted)]">Total cumule sur le graphique.</p>
+                  </article>
+
+                  <article className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">Pic de ventes</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--text)]">
+                      {overviewSalesStats.peakPoint ? overviewSalesStats.peakPoint.period : "-"}
+                    </p>
+                    <p className="mt-2 text-sm text-[var(--text-muted)]">
+                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistree"}
+                    </p>
+                  </article>
+                </section>
               </div>
             ) : null}
 
@@ -1901,5 +2010,9 @@ function canReactivateClient(client: AdminClient): boolean {
   const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
 }
+
+
+
+
 
 
