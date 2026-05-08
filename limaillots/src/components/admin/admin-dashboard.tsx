@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -260,7 +260,7 @@ export function AdminDashboard() {
   });
   const [selectedClientId, setSelectedClientId] = useState("");
   const [clientNotification, setClientNotification] = useState({ title: "", message: "" });
-  const [changeHistory, setChangeHistory] = useState<Array<{ id: string; message: string; createdAt: string }>>([]);
+  const changeHistory = db.changeHistory;
   const clientsByActivity = useMemo(
     () => [...db.clients].sort((a, b) => getActivityScore(b) - getActivityScore(a)),
     [db.clients],
@@ -496,17 +496,13 @@ export function AdminDashboard() {
     }
   }
 
-  function addChangeHistory(message: string) {
-    setChangeHistory((previous) => [
-      {
-        id: `chg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-        message,
-        createdAt: new Date().toISOString(),
-      },
-      ...previous,
-    ]);
+  function createChangeHistoryItem(message: string) {
+    return {
+      id: `chg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      message,
+      createdAt: new Date().toISOString(),
+    };
   }
-
   function updateProduct(productId: string, update: Partial<Product>, quiet = false) {
     const current = db.products.find((product) => product.id === productId);
     const nextDb: AdminDatabase = {
@@ -518,9 +514,8 @@ export function AdminDashboard() {
 
     if (current) {
       const updated = { ...current, ...update } as Product;
-      if (summarizeProductChange(current, updated) !== `Produit modifie: ${updated.name}`) {
-        addChangeHistory(summarizeProductChange(current, updated));
-      }
+      const historyEntry = createChangeHistoryItem(summarizeProductChange(current, updated));
+      nextDb.changeHistory = [historyEntry, ...db.changeHistory];
 
       if (productEditor?.productId === productId) {
         setProductEditor(createEmptyProductEditorState(updated));
@@ -537,7 +532,7 @@ export function AdminDashboard() {
     };
 
     if (current) {
-      addChangeHistory(`Produit supprime: ${current.name}`);
+      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprime: ${current.name}`), ...db.changeHistory];
     }
 
     if (productEditor?.productId === productId) {
@@ -619,7 +614,7 @@ export function AdminDashboard() {
       products: [product, ...db.products],
     };
 
-    addChangeHistory(`Produit ajoute: ${product.name}`);
+    nextDb.changeHistory = [createChangeHistoryItem(`Produit ajoute: ${product.name}`), ...db.changeHistory];
     void persist(nextDb, "Nouveau produit ajoute.");
     setNewProduct({
       name: "",
@@ -711,7 +706,7 @@ export function AdminDashboard() {
 
     const review = db.clients.flatMap((client) => client.reviews).find((item) => item.id === reviewId);
     if (review) {
-      addChangeHistory(`Avis ${status}: ${review.comment.slice(0, 40)}`);
+      nextDb.changeHistory = [createChangeHistoryItem(`Avis ${status}: ${review.comment.slice(0, 40)}`), ...db.changeHistory];
     }
 
     void persist(nextDb, "Avis mis a jour.");
@@ -868,6 +863,7 @@ export function AdminDashboard() {
       }),
     };
 
+    nextDb.changeHistory = [createChangeHistoryItem(`Notification client envoyee a ${selectedClient?.fullName ?? "client"}`), ...db.changeHistory];
     setClientNotification({ title: "", message: "" });
     void persist(nextDb, "Notification client envoyee.");
   }
