@@ -1,4 +1,4 @@
-
+﻿
 "use client";
 
 import dynamic from "next/dynamic";
@@ -94,8 +94,8 @@ export default function Home() {
   const [promoCodes, setPromoCodes] = useState<AdminPromoCode[]>(fallbackPromoState);
   const [storeClients, setStoreClients] = useState<AdminClient[]>(() => createDefaultAdminStateData().clients);
   const [orders, setOrders] = useState<AdminOrder[]>(() => createDefaultAdminStateData().orders);
-  const [databaseBacked, setDatabaseBacked] = useState(false);
-  const [storeError, setStoreError] = useState("");
+  const [, setDatabaseBacked] = useState(false);
+  const [, setStoreError] = useState("");
 
   const [theme, setTheme] = useState<ShopTheme>(() => {
     if (typeof window === "undefined") {
@@ -648,12 +648,6 @@ export default function Home() {
         onFiltersChange={updateFilters}
       />
 
-      {!databaseBacked || storeError ? (
-        <div className="mx-auto mt-4 max-w-7xl rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2 text-xs text-amber-700">
-          {storeError || "DATABASE_URL non configuree: mode demonstration actif."}
-        </div>
-      ) : null}
-
       <main>
         <HeroSection onCtaClick={jumpToProducts} onQuickCategorySelect={handleHeroQuickCategorySelect} />
 
@@ -716,6 +710,10 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
 
 
 

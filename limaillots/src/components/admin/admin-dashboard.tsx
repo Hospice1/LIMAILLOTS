@@ -1,4 +1,4 @@
-
+﻿
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -1084,7 +1084,7 @@ export function AdminDashboard() {
                         onChange={(value) => setNewProduct((prev) => ({ ...prev, name: value }))}
                       />
                       <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                        Catégorie
+                        CatÃ©gorie
                         <div className="flex gap-2">
                           <select
                             value={newProductCategoryMode}
@@ -1136,7 +1136,7 @@ export function AdminDashboard() {
                           onChange={handleNewProductFilesChange}
                           className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                         />
-                        <span className="text-xs text-[var(--text-muted)]">Jusqu&apos;à 6 images, uploadées sur Vercel Blob.</span>
+                        <span className="text-xs text-[var(--text-muted)]">Jusqu&apos;Ã  6 images, uploadÃ©es sur Vercel Blob.</span>
                       </label>
                       {parseImageList(newProduct.imageUrl, newProduct.imageUrls).length > 0 ? (
                         <div className="md:col-span-2 grid grid-cols-3 gap-3">
@@ -1238,7 +1238,7 @@ export function AdminDashboard() {
                             onChange={(value) => setProductEditor((prev) => prev ? { ...prev, name: value } : prev)}
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            Catégorie
+                            CatÃ©gorie
                             <div className="flex gap-2">
                               <select
                                 value={productEditor.categoryMode}
@@ -1901,4 +1901,5 @@ function canReactivateClient(client: AdminClient): boolean {
   const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
 }
+
 
