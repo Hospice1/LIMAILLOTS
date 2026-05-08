@@ -18,7 +18,19 @@ export async function GET() {
 
   const user = await findClientUserById(session.sub);
 
-  if (!user) {
+  if (!user || user.deletedAt) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Compte supprime.",
+      },
+      { status: 401 },
+    );
+  }
+
+  const account = await getClientAccountByEmail(user.email);
+
+  if (!account.client) {
     return NextResponse.json(
       {
         ok: false,
@@ -27,8 +39,6 @@ export async function GET() {
       { status: 401 },
     );
   }
-
-  const account = await getClientAccountByEmail(user.email);
 
   return NextResponse.json({
     ok: true,

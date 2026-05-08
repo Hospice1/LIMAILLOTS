@@ -40,6 +40,8 @@ export interface AdminClient {
   reviews: ClientReview[];
   notifications: ClientNotification[];
   lastActivityAt: string;
+  deletedAt?: string;
+  deletedReason?: string;
 }
 
 export interface AdminPromoCode {

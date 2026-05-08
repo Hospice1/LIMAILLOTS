@@ -18,6 +18,7 @@ import {
 } from '@/types/admin';
 import { Product } from "@/types/store";
 import { getPrismaClient } from "@/lib/server/prisma";
+import { deleteClientUserByEmail, findClientUserByEmail, reactivateClientUserByEmail } from "@/lib/server/client-users";
 
 interface PersistedAdminUser {
   id: string;
@@ -529,6 +530,10 @@ export async function ensureClientProfile(input: {
   if (existingIndex >= 0) {
     const existing = nextState.clients[existingIndex];
 
+    if (existing.deletedAt) {
+      return cloneValue(existing);
+    }
+
     nextState.clients[existingIndex] = {
       ...existing,
       fullName: input.fullName?.trim() || existing.fullName,
@@ -553,6 +558,101 @@ export async function ensureClientProfile(input: {
   return cloneValue(createdClient);
 }
 
+export async function deleteAdminClientByEmail(input: {
+  email: string;
+  reason?: string;
+}): Promise<{ ok: boolean; message: string; client?: AdminClient }> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return { ok: false, message: "Email requis." };
+  }
+
+  const persisted = await readPersistedState();
+  const nextState = cloneValue(persisted.state);
+  const clientIndex = nextState.clients.findIndex(
+    (item) => item.email.toLowerCase() === normalizedEmail,
+  );
+
+  if (clientIndex < 0) {
+    return { ok: false, message: "Client introuvable." };
+  }
+
+  const currentClient = nextState.clients[clientIndex];
+  if (currentClient.deletedAt) {
+    return { ok: false, message: "Ce compte est deja supprime." };
+  }
+
+  const updatedClient = {
+    ...currentClient,
+    deletedAt: new Date().toISOString(),
+    deletedReason: input.reason?.trim() || "Compte supprime par l'administrateur.",
+  };
+
+  nextState.clients[clientIndex] = updatedClient;
+  await savePersistedState(nextState);
+
+  const authUser = await findClientUserByEmail(normalizedEmail);
+  if (authUser && !authUser.deletedAt) {
+    await deleteClientUserByEmail({ email: normalizedEmail, reason: updatedClient.deletedReason });
+  }
+
+  return { ok: true, message: "Compte client supprime.", client: cloneValue(updatedClient) };
+}
+
+export async function reactivateAdminClientByEmail(input: {
+  email: string;
+}): Promise<{ ok: boolean; message: string; client?: AdminClient }> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return { ok: false, message: "Email requis." };
+  }
+
+  const persisted = await readPersistedState();
+  const nextState = cloneValue(persisted.state);
+  const clientIndex = nextState.clients.findIndex(
+    (item) => item.email.toLowerCase() === normalizedEmail,
+  );
+
+  if (clientIndex < 0) {
+    return { ok: false, message: "Client introuvable." };
+  }
+
+  const currentClient = nextState.clients[clientIndex];
+  if (!currentClient.deletedAt) {
+    return { ok: false, message: "Ce compte est deja actif." };
+  }
+
+  const deletedAt = new Date(currentClient.deletedAt);
+  if (Number.isNaN(deletedAt.getTime())) {
+    return { ok: false, message: "Date de suppression invalide." };
+  }
+
+  const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+  if (diffDays > 30) {
+    return { ok: false, message: "Reactivation impossible apres 30 jours." };
+  }
+
+  const updatedClient = {
+    ...currentClient,
+    deletedAt: undefined,
+    deletedReason: undefined,
+    lastActivityAt: new Date().toISOString().slice(0, 10),
+  };
+
+  nextState.clients[clientIndex] = updatedClient;
+  await savePersistedState(nextState);
+
+  const authUser = await findClientUserByEmail(normalizedEmail);
+  if (authUser?.deletedAt) {
+    const authResult = await reactivateClientUserByEmail({ email: normalizedEmail });
+    if (!authResult.ok) {
+      return { ok: false, message: authResult.message };
+    }
+  }
+
+  return { ok: true, message: "Compte client reactive.", client: cloneValue(updatedClient) };
+}
+
 export async function getClientAccountByEmail(email: string): Promise<{
   client: AdminClient | null;
   orders: AdminStateData["orders"];
@@ -565,7 +665,7 @@ export async function getClientAccountByEmail(email: string): Promise<{
       (item) => item.email.toLowerCase() === normalizedEmail,
     ) ?? null;
 
-  if (!client) {
+  if (!client || client.deletedAt) {
     return {
       client: null,
       orders: [],
@@ -594,6 +694,10 @@ export async function syncClientPendingCart(input: {
   );
 
   if (existingIndex >= 0) {
+    if (nextState.clients[existingIndex].deletedAt) {
+      return;
+    }
+
     nextState.clients[existingIndex] = {
       ...nextState.clients[existingIndex],
       pendingCarts: pendingItems > 0 ? 1 : 0,
@@ -768,12 +872,37 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
   let client: AdminClient;
 
   if (normalizedEmail) {
+    const authRecord = await findClientUserByEmail(normalizedEmail);
+    if (authRecord?.deletedAt) {
+      return {
+        ok: false,
+        message: "Ce compte a ete supprime et ne peut plus acheter.",
+        subtotal: 0,
+        discountAmount: 0,
+        finalPrice: 0,
+        appliedPromoCode: "",
+        ...getPublicStateShape(currentState),
+      };
+    }
+
     const existingIndex = currentState.clients.findIndex(
       (item) => item.email.toLowerCase() === normalizedEmail,
     );
 
     if (existingIndex >= 0) {
       client = currentState.clients[existingIndex];
+
+      if (client.deletedAt) {
+        return {
+          ok: false,
+          message: "Ce compte a ete supprime et ne peut plus acheter.",
+          subtotal: 0,
+          discountAmount: 0,
+          finalPrice: 0,
+          appliedPromoCode: "",
+          ...getPublicStateShape(currentState),
+        };
+      }
     } else {
       client = createClientFromEmail(normalizedEmail, dateLabel);
       currentState.clients.unshift(client);
@@ -783,7 +912,6 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     currentState.clients = ensuredClients.clients;
     client = currentState.clients[ensuredClients.index];
   }
-
   client.totalSpent += finalPrice;
   client.completedOrders += 1;
   client.pendingCarts = 0;

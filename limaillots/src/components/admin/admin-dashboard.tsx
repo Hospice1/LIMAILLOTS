@@ -868,6 +868,75 @@ export function AdminDashboard() {
     void persist(nextDb, "Notification client envoyee.");
   }
 
+  async function deleteSelectedClient() {
+    if (!selectedClient) {
+      setFeedback("Selectionne un client.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Supprimer definitivement le compte ${selectedClient.fullName} ?`);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/clients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "delete",
+          email: selectedClient.email,
+        }),
+      });
+
+      const payload = (await response.json()) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !payload.ok) {
+        setFeedback(payload.message ?? "Suppression client impossible.");
+        return;
+      }
+
+      setFeedback(payload.message ?? "Compte client supprime.");
+      await loadDatabase();
+    } catch {
+      setFeedback("Suppression client impossible pour le moment.");
+    }
+  }
+
+  async function reactivateSelectedClient() {
+    if (!selectedClient) {
+      setFeedback("Selectionne un client.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/clients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "reactivate",
+          email: selectedClient.email,
+        }),
+      });
+
+      const payload = (await response.json()) as { ok?: boolean; message?: string };
+
+      if (!response.ok || !payload.ok) {
+        setFeedback(payload.message ?? "Reactivation impossible.");
+        return;
+      }
+
+      setFeedback(payload.message ?? "Compte client reactive.");
+      await loadDatabase();
+    } catch {
+      setFeedback("Reactivation client impossible pour le moment.");
+    }
+  }
+
   function setRecoveryEmail(value: string) {
     setSecurityForm((previous) => ({ ...previous, recoveryEmail: value }));
   }
@@ -991,7 +1060,19 @@ export function AdminDashboard() {
               <div className="mb-4 text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Sauvegarde en cours...
               </div>
-            ) : null}            {activeTab === "products" ? (
+            ) : null}
+
+            {activeTab === "overview" ? (
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-8 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">Vue globale</p>
+                <h2 className="mt-3 text-2xl font-semibold text-[var(--text)]">Aucune donnee affichee</h2>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">
+                  Cette section reste vide pour eviter d&apos;exposer des donnees sensibles ou partielles.
+                </p>
+              </div>
+            ) : null}
+
+            {activeTab === "products" ? (
               <div className="space-y-8">
                 <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
                   <section className="rounded-3xl border border-[var(--border)] bg-[var(--surface-muted)] p-5 shadow-[var(--card-shadow)]">
@@ -1403,7 +1484,7 @@ export function AdminDashboard() {
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-[var(--text)]">Base clients</h2>
                 <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--border)]">
-                  <table className="min-w-[980px] w-full text-left text-sm">
+                  <table className="min-w-[1180px] w-full text-left text-sm">
                     <thead className="bg-[var(--surface-muted)] text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">
                       <tr>
                         <th className="px-3 py-2">Client</th>
@@ -1413,6 +1494,7 @@ export function AdminDashboard() {
                         <th className="px-3 py-2">Codes promo</th>
                         <th className="px-3 py-2">Favoris</th>
                         <th className="px-3 py-2">Avis</th>
+                        <th className="px-3 py-2">Statut</th>
                         <th className="px-3 py-2">Depenses</th>
                       </tr>
                     </thead>
@@ -1433,6 +1515,16 @@ export function AdminDashboard() {
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.promoCodesUsed.length}</td>
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.favoriteProductIds.length}</td>
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.reviews.length}</td>
+                          <td className="px-3 py-2">
+                            <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${client.deletedAt ? "border-amber-300 bg-amber-50 text-amber-700" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
+                              {client.deletedAt ? (canReactivateClient(client) ? "Supprime - reactivable" : "Supprime - bloque") : "Actif"}
+                            </span>
+                            {client.deletedAt ? (
+                              <p className="mt-1 text-[10px] text-[var(--text-muted)]">
+                                {client.deletedReason ?? "Suppression admin."}
+                              </p>
+                            ) : null}
+                          </td>
                           <td className="px-3 py-2 font-semibold text-[var(--text)]">{formatPrice(client.totalSpent)}</td>
                         </tr>
                       ))}
@@ -1445,10 +1537,33 @@ export function AdminDashboard() {
                     <article className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-muted)]">
                       <h3 className="text-base font-semibold text-[var(--text)]">Inventaire client</h3>
                       <p className="mt-2">{selectedClient.fullName} - {selectedClient.email}</p>
+                      <p>Statut: {selectedClient.deletedAt ? "Supprime" : "Actif"}</p>
+                      {selectedClient.deletedAt ? (
+                        <p>Suppression: {selectedClient.deletedReason ?? "Compte supprime par l'administrateur."}</p>
+                      ) : null}
                       <p>Achats finalises: {selectedClient.completedOrders}</p>
                       <p>Panier en cours: {selectedClient.pendingCarts}</p>
                       <p>Codes promo: {selectedClient.promoCodesUsed.join(", ") || "Aucun"}</p>
                       <p>Favoris: {selectedClient.favoriteProductIds.join(", ") || "Aucun"}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedClient.deletedAt ? (
+                          <button
+                            type="button"
+                            onClick={() => void reactivateSelectedClient()}
+                            className="rounded-full border border-emerald-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-600"
+                          >
+                            Reactiver le compte
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => void deleteSelectedClient()}
+                            className="rounded-full border border-red-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-500"
+                          >
+                            Supprimer le compte
+                          </button>
+                        )}
+                      </div>
 
                       <div className="mt-3 space-y-2">
                         <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]">Commandes</p>
@@ -1769,4 +1884,21 @@ function getActivityScore(client: AdminClient): number {
 
 
 
+
+
+
+
+function canReactivateClient(client: AdminClient): boolean {
+  if (!client.deletedAt) {
+    return false;
+  }
+
+  const deletedAt = new Date(client.deletedAt);
+  if (Number.isNaN(deletedAt.getTime())) {
+    return false;
+  }
+
+  const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= 30;
+}
 

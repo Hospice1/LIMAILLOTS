@@ -13,7 +13,7 @@ export async function GET() {
 
   const user = await findClientUserById(session.sub);
 
-  if (!user) {
+  if (!user || user.deletedAt) {
     return NextResponse.json({
       authenticated: false,
     });

@@ -1,6 +1,8 @@
 ﻿import { compare, hash } from "bcryptjs";
 import { getPrismaClient } from "@/lib/server/prisma";
 
+const REACTIVATION_WINDOW_DAYS = 30;
+
 export interface ClientUserRecord {
   id: string;
   email: string;
@@ -8,6 +10,8 @@ export interface ClientUserRecord {
   fullName: string;
   phone: string;
   city: string;
+  deletedAt?: string;
+  deletedReason?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -24,20 +28,13 @@ function cloneValue<T>(value: T): T {
   return structuredClone(value);
 }
 
-async function ensureMemoryStore(): Promise<MemoryClientStore> {
-  if (globalThis.limaillotsMemoryClientUsers) {
-    return globalThis.limaillotsMemoryClientUsers;
-  }
-
-  globalThis.limaillotsMemoryClientUsers = {
-    users: [],
-  };
-
-  return globalThis.limaillotsMemoryClientUsers;
-}
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
+}
+
+function toIso(value?: Date | string | null): string | undefined {
+  if (!value) return undefined;
+  return typeof value === "string" ? value : value.toISOString();
 }
 
 function toRecord(input: {
@@ -47,6 +44,8 @@ function toRecord(input: {
   fullName: string;
   phone: string;
   city: string;
+  deletedAt?: Date | string | null;
+  deletedReason?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
 }): ClientUserRecord {
@@ -57,15 +56,32 @@ function toRecord(input: {
     fullName: input.fullName,
     phone: input.phone,
     city: input.city,
-    createdAt:
-      typeof input.createdAt === "string"
-        ? input.createdAt
-        : input.createdAt.toISOString(),
-    updatedAt:
-      typeof input.updatedAt === "string"
-        ? input.updatedAt
-        : input.updatedAt.toISOString(),
+    deletedAt: toIso(input.deletedAt),
+    deletedReason: input.deletedReason ?? undefined,
+    createdAt: toIso(input.createdAt) ?? new Date().toISOString(),
+    updatedAt: toIso(input.updatedAt) ?? new Date().toISOString(),
   };
+}
+
+function isDeleted(user: ClientUserRecord | null | undefined): boolean {
+  return Boolean(user?.deletedAt);
+}
+
+function canReactivate(user: ClientUserRecord | null | undefined): boolean {
+  if (!user?.deletedAt) return false;
+  const deletedAt = new Date(user.deletedAt);
+  if (Number.isNaN(deletedAt.getTime())) return false;
+  const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
+  return diffDays <= REACTIVATION_WINDOW_DAYS;
+}
+
+async function ensureMemoryStore(): Promise<MemoryClientStore> {
+  if (globalThis.limaillotsMemoryClientUsers) {
+    return globalThis.limaillotsMemoryClientUsers;
+  }
+
+  globalThis.limaillotsMemoryClientUsers = { users: [] };
+  return globalThis.limaillotsMemoryClientUsers;
 }
 
 async function findFromMemoryByEmail(email: string): Promise<ClientUserRecord | null> {
@@ -80,21 +96,28 @@ async function findFromMemoryById(id: string): Promise<ClientUserRecord | null> 
   return user ? cloneValue(user) : null;
 }
 
+async function saveMemoryUser(nextUser: ClientUserRecord): Promise<ClientUserRecord> {
+  const memory = await ensureMemoryStore();
+  const index = memory.users.findIndex((item) => item.id === nextUser.id);
+  if (index >= 0) {
+    memory.users[index] = cloneValue(nextUser);
+  } else {
+    memory.users.unshift(cloneValue(nextUser));
+  }
+  return cloneValue(nextUser);
+}
+
 export async function findClientUserByEmail(email: string): Promise<ClientUserRecord | null> {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return null;
 
   const prisma = getPrismaClient();
-
   if (!prisma) {
     return findFromMemoryByEmail(normalizedEmail);
   }
 
   try {
-    const user = await prisma.clientUser.findUnique({
-      where: { email: normalizedEmail },
-    });
-
+    const user = await prisma.clientUser.findUnique({ where: { email: normalizedEmail } });
     return user ? toRecord(user) : null;
   } catch {
     return findFromMemoryByEmail(normalizedEmail);
@@ -106,20 +129,102 @@ export async function findClientUserById(id: string): Promise<ClientUserRecord |
   if (!normalizedId) return null;
 
   const prisma = getPrismaClient();
-
   if (!prisma) {
     return findFromMemoryById(normalizedId);
   }
 
   try {
-    const user = await prisma.clientUser.findUnique({
-      where: { id: normalizedId },
-    });
-
+    const user = await prisma.clientUser.findUnique({ where: { id: normalizedId } });
     return user ? toRecord(user) : null;
   } catch {
     return findFromMemoryById(normalizedId);
   }
+}
+
+async function persistClientUserRecord(user: ClientUserRecord): Promise<ClientUserRecord> {
+  const prisma = getPrismaClient();
+
+  if (!prisma) {
+    return saveMemoryUser(user);
+  }
+
+  const persisted = await prisma.clientUser.update({
+    where: { id: user.id },
+    data: {
+      fullName: user.fullName,
+      phone: user.phone,
+      city: user.city,
+      deletedAt: user.deletedAt ? new Date(user.deletedAt) : null,
+      deletedReason: user.deletedReason ?? null,
+    },
+  });
+
+  return toRecord(persisted);
+}
+
+export async function deleteClientUserByEmail(input: {
+  email: string;
+  reason?: string;
+}): Promise<{ ok: boolean; message: string; user?: ClientUserRecord }> {
+  const email = normalizeEmail(input.email);
+  if (!email) {
+    return { ok: false, message: "Email requis." };
+  }
+
+  const existing = await findClientUserByEmail(email);
+  if (!existing) {
+    return { ok: false, message: "Compte introuvable." };
+  }
+
+  if (isDeleted(existing)) {
+    return { ok: false, message: "Ce compte est deja supprime." };
+  }
+
+  const updated = await persistClientUserRecord({
+    ...existing,
+    deletedAt: new Date().toISOString(),
+    deletedReason: input.reason?.trim() || "Supprime par l'administrateur.",
+  });
+
+  return {
+    ok: true,
+    message: "Compte client supprime et email bloque.",
+    user: updated,
+  };
+}
+
+export async function reactivateClientUserByEmail(input: {
+  email: string;
+}): Promise<{ ok: boolean; message: string; user?: ClientUserRecord }> {
+  const email = normalizeEmail(input.email);
+  if (!email) {
+    return { ok: false, message: "Email requis." };
+  }
+
+  const existing = await findClientUserByEmail(email);
+  if (!existing) {
+    return { ok: false, message: "Compte introuvable." };
+  }
+
+  if (!isDeleted(existing)) {
+    return { ok: false, message: "Ce compte est deja actif." };
+  }
+
+  if (!canReactivate(existing)) {
+    return { ok: false, message: "Reactivation impossible apres 30 jours." };
+  }
+
+  const updated = await persistClientUserRecord({
+    ...existing,
+    deletedAt: undefined,
+    deletedReason: undefined,
+  });
+
+  return {
+    ok: true,
+    message: "Compte client reactive.",
+    user: updated,
+  };
 }
 
 export async function registerClientUser(input: {
@@ -145,14 +250,18 @@ export async function registerClientUser(input: {
 
   const existing = await findClientUserByEmail(email);
   if (existing) {
-    return { ok: false, message: "Un compte existe deja avec cet email." };
+    return {
+      ok: false,
+      message: isDeleted(existing)
+        ? "Cet email est definitivement banni."
+        : "Un compte existe deja avec cet email.",
+    };
   }
 
   const passwordHash = await hash(password, 12);
   const prisma = getPrismaClient();
 
   if (!prisma) {
-    const memory = await ensureMemoryStore();
     const now = new Date().toISOString();
 
     const user: ClientUserRecord = {
@@ -166,6 +275,7 @@ export async function registerClientUser(input: {
       updatedAt: now,
     };
 
+    const memory = await ensureMemoryStore();
     memory.users.unshift(user);
 
     return { ok: true, message: "Compte cree avec succes.", user: cloneValue(user) };
@@ -188,9 +298,7 @@ export async function registerClientUser(input: {
       user: toRecord(created),
     };
   } catch {
-    const memory = await ensureMemoryStore();
     const now = new Date().toISOString();
-
     const user: ClientUserRecord = {
       id: `clu-${Date.now().toString(36)}`,
       email,
@@ -202,6 +310,7 @@ export async function registerClientUser(input: {
       updatedAt: now,
     };
 
+    const memory = await ensureMemoryStore();
     memory.users.unshift(user);
 
     return { ok: true, message: "Compte cree avec succes.", user: cloneValue(user) };
@@ -220,6 +329,10 @@ export async function authenticateClientUser(input: {
   const user = await findClientUserByEmail(email);
   if (!user) {
     return { ok: false, message: "Email ou mot de passe invalide." };
+  }
+
+  if (isDeleted(user)) {
+    return { ok: false, message: "Ce compte a ete supprime et ne peut plus se connecter." };
   }
 
   const validPassword = await compare(input.password, user.passwordHash);
