@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { establishAdminSession } from "@/lib/server/admin-auth";
+import { requireSameOriginRequest } from "@/lib/server/admin-guard";
 import { authenticateAdminPassword } from "@/lib/server/admin-store";
 
 interface LoginBody {
@@ -7,6 +8,10 @@ interface LoginBody {
 }
 
 export async function POST(request: Request) {
+  const originCheck = requireSameOriginRequest(request);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
   const body = (await request.json()) as LoginBody;
   const password = body.password?.trim() ?? "";
 

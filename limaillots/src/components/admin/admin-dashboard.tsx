@@ -1,18 +1,49 @@
-﻿
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ProductGallery } from "@/components/product-gallery";
 import { LimaillotsLogo } from "@/components/limaillots-logo";
 import { AdminReviewsPanel, type AdminReviewItem } from "@/components/admin/admin-reviews-panel";
 import { formatPrice } from "@/lib/store-utils";
 import { AdminClient, AdminDatabase, AdminPromoCode, AdminSalesPoint, ReviewStatus } from "@/types/admin";
 import { categoryItems } from "@/data/store-data";
-import { Product } from "@/types/store";
+import { Product, ProductMediaItem } from "@/types/store";
 
 
 type AdminTab = "overview" | "products" | "clients" | "reviews" | "promos" | "security";
+
+type ProductEditorState = {
+  productId: string;
+  name: string;
+  categoryMode: "existing" | "new";
+  category: string;
+  customCategory: string;
+  clubOrCountry: string;
+  description: string;
+  sizes: string;
+  price: string;
+  oldPrice: string;
+  stock: string;
+  media: ProductMediaItem[];
+  visual: string;
+  isPromo: boolean;
+  isNew: boolean;
+};
+
+type ProductFormState = {
+  name: string;
+  category: string;
+  newCategory: string;
+  clubOrCountry: string;
+  description: string;
+  sizes: string;
+  price: string;
+  oldPrice: string;
+  stock: string;
+  media: ProductMediaItem[];
+};
 
 const gradientPool = [
   "from-blue-500 via-indigo-500 to-cyan-700",
@@ -45,25 +76,56 @@ const emptyDatabase: AdminDatabase = {
   },
 };
 
+function createEmptyMedia(): ProductMediaItem[] {
+  return [];
+}
 
-type ProductEditorState = {
-  productId: string;
-  name: string;
-  categoryMode: "existing" | "new";
-  category: string;
-  customCategory: string;
-  clubOrCountry: string;
-  description: string;
-  sizes: string;
-  price: string;
-  oldPrice: string;
-  stock: string;
-  primaryImage: string;
-  imageUrls: string;
-  visual: string;
-  isPromo: boolean;
-  isNew: boolean;
-};
+function normalizeMediaKind(url: string, kind?: ProductMediaItem["kind"]): ProductMediaItem["kind"] {
+  if (kind === "video") return "video";
+  if (/\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url)) return "video";
+  return "image";
+}
+
+function normalizeMediaItems(items: Array<ProductMediaItem | string> | undefined): ProductMediaItem[] {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return Array.from(
+    new Map(
+      items
+        .map((item) => {
+          if (typeof item === "string") {
+            const url = item.trim();
+            if (!url) return null;
+            return [url, { url, kind: normalizeMediaKind(url) } as ProductMediaItem] as const;
+          }
+
+          const url = item.url.trim();
+          if (!url) return null;
+          return [url, { url, kind: normalizeMediaKind(url, item.kind), label: item.label } as ProductMediaItem] as const;
+        })
+        .filter((entry): entry is readonly [string, ProductMediaItem] => Boolean(entry)),
+    ).values(),
+  );
+}
+
+function mediaSignature(items: ProductMediaItem[]): string {
+  return items.map((item) => `${item.kind}:${item.url}`).join("|");
+}
+
+function mediaToLegacyImages(items: ProductMediaItem[]): string[] {
+  return items.filter((item) => item.kind === "image").map((item) => item.url);
+}
+
+function extractProductMedia(product: Pick<Product, "media" | "imageUrl" | "images">): ProductMediaItem[] {
+  if (Array.isArray(product.media) && product.media.length > 0) {
+    return normalizeMediaItems(product.media);
+  }
+
+  const legacyUrls = [product.imageUrl ?? "", ...(product.images ?? [])].map((item) => item.trim()).filter(Boolean);
+  return normalizeMediaItems(legacyUrls);
+}
 
 function createEmptyProductEditorState(product?: Product | null): ProductEditorState {
   if (!product) {
@@ -79,8 +141,7 @@ function createEmptyProductEditorState(product?: Product | null): ProductEditorS
       price: "29990",
       oldPrice: "",
       stock: "10",
-      primaryImage: "",
-      imageUrls: "",
+      media: createEmptyMedia(),
       visual: "",
       isPromo: false,
       isNew: false,
@@ -99,60 +160,57 @@ function createEmptyProductEditorState(product?: Product | null): ProductEditorS
     price: String(product.price),
     oldPrice: product.oldPrice ? String(product.oldPrice) : "",
     stock: String(product.stock),
-    primaryImage: product.imageUrl ?? product.images?.[0] ?? "",
-    imageUrls: product.images?.slice(1).join(",") ?? "",
+    media: extractProductMedia(product),
     visual: product.visual,
     isPromo: Boolean(product.isPromo),
     isNew: Boolean(product.isNew),
   };
 }
 
-
 function parseOptionalNumber(value: string): number | undefined {
   const normalized = Number(value);
   return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
 }
 
-function parseImageList(primaryImage: string, galleryValue: string): string[] {
-  const urls = [primaryImage, ...galleryValue.split(",")]
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return Array.from(new Set(urls));
-}
-
-
-
-
-
-async function uploadFilesToBlob(files: File[], folder: string): Promise<string[]> {
+function uploadFilesToBlob(files: File[], folder: string): Promise<ProductMediaItem[]> {
   const formData = new FormData();
   formData.set("folder", folder);
   files.slice(0, 6).forEach((file) => formData.append("files", file));
 
-  const response = await fetch("/api/uploads", {
+  return fetch("/api/uploads", {
     method: "POST",
     body: formData,
+  }).then(async (response) => {
+    const payload = (await response.json()) as {
+      ok?: boolean;
+      media?: ProductMediaItem[];
+      urls?: string[];
+      message?: string;
+    };
+
+    const media = Array.isArray(payload.media)
+      ? payload.media
+      : Array.isArray(payload.urls)
+        ? payload.urls.map((url) => ({
+            url,
+            kind: /\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i.test(url) ? ("video" as const) : ("image" as const),
+          }))
+        : [];
+
+    if (!response.ok || !payload.ok || media.length === 0) {
+      throw new Error(payload.message ?? "Upload impossible.");
+    }
+
+    return media;
   });
-
-  const payload = (await response.json()) as { ok?: boolean; urls?: string[]; message?: string };
-
-  if (!response.ok || !payload.ok || !Array.isArray(payload.urls)) {
-    throw new Error(payload.message ?? "Upload impossible.");
-  }
-
-  return payload.urls;
-}
-
-function getProductImageSet(product: Pick<Product, "imageUrl" | "images">): string[] {
-  return parseImageList(product.imageUrl ?? "", product.images?.slice(1).join(",") ?? "");
 }
 
 function hasProductChanges(editor: ProductEditorState, current: Product): boolean {
   const resolvedCategory = editor.categoryMode === "new"
     ? editor.customCategory.trim()
     : editor.category.trim();
-  const editorImages = parseImageList(editor.primaryImage, editor.imageUrls);
-  const currentImages = getProductImageSet(current);
+  const editorMedia = normalizeMediaItems(editor.media);
+  const currentMedia = extractProductMedia(current);
 
   return (
     editor.name.trim() !== current.name
@@ -166,7 +224,7 @@ function hasProductChanges(editor: ProductEditorState, current: Product): boolea
     || editor.visual.trim() !== current.visual
     || editor.isPromo !== current.isPromo
     || editor.isNew !== current.isNew
-    || editorImages.join(",") !== currentImages.join(",")
+    || mediaSignature(editorMedia) !== mediaSignature(currentMedia)
   );
 }
 
@@ -182,20 +240,21 @@ function summarizeProductChange(before: Product, after: Product): string {
   if (before.stock !== after.stock) changes.push("stock");
   if (before.isPromo !== after.isPromo) changes.push("promo");
   if (before.isNew !== after.isNew) changes.push("nouveau");
-  if ((before.imageUrl ?? "") !== (after.imageUrl ?? "")) changes.push("image principale");
-  if ((before.images ?? []).join(",") !== (after.images ?? []).join(",")) changes.push("galerie");
+  if (mediaSignature(extractProductMedia(before)) !== mediaSignature(extractProductMedia(after))) changes.push("medias");
   if (before.visual !== after.visual) changes.push("visuel");
 
   return changes.length > 0
-    ? `Produit modifie: ${after.name} (${changes.join(", ")})`
-    : `Produit modifie: ${after.name}`;
+    ? `Produit modifié: ${after.name} (${changes.join(", ")})`
+    : `Produit modifié: ${after.name}`;
 }
 
 function buildProductPatchFromEditor(editor: ProductEditorState, current: Product): Partial<Product> {
   const resolvedCategory = editor.categoryMode === "new"
     ? editor.customCategory.trim()
     : editor.category.trim();
-  const images = parseImageList(editor.primaryImage, editor.imageUrls);
+  const media = normalizeMediaItems(editor.media);
+  const legacyImages = mediaToLegacyImages(media);
+  const primaryImage = media.find((item) => item.kind === "image")?.url ?? media[0]?.url;
   const oldPrice = parseOptionalNumber(editor.oldPrice);
   const price = Number(editor.price);
   const stock = Number(editor.stock);
@@ -215,10 +274,12 @@ function buildProductPatchFromEditor(editor: ProductEditorState, current: Produc
     visual: editor.visual.trim() || current.visual,
     isPromo: editor.isPromo,
     isNew: editor.isNew,
-    imageUrl: images[0],
-    images: images.length > 1 ? images : undefined,
+    media,
+    imageUrl: primaryImage,
+    images: legacyImages.length > 0 ? legacyImages : undefined,
   };
 }
+
 export function AdminDashboard() {
   const [db, setDb] = useState<AdminDatabase>(emptyDatabase);
   const [isAuth, setIsAuth] = useState(false);
@@ -231,7 +292,7 @@ export function AdminDashboard() {
   const [authError, setAuthError] = useState("");
   const [feedback, setFeedback] = useState("");
 
-  const [newProduct, setNewProduct] = useState({
+  const [newProduct, setNewProduct] = useState<ProductFormState>({
     name: "",
     category: "Internationaux",
     newCategory: "",
@@ -241,8 +302,7 @@ export function AdminDashboard() {
     price: "29990",
     oldPrice: "",
     stock: "10",
-    imageUrl: "",
-    imageUrls: "",
+    media: createEmptyMedia(),
   });
   const [newProductCategoryMode, setNewProductCategoryMode] = useState<"existing" | "new">("existing");
   const [productEditor, setProductEditor] = useState<ProductEditorState | null>(null);
@@ -543,7 +603,7 @@ export function AdminDashboard() {
       }
     }
 
-    void persist(nextDb, quiet ? undefined : "Produit modifie.");
+    void persist(nextDb, quiet ? undefined : "Produit modifié.");
   }
   function removeProduct(productId: string) {
     const current = db.products.find((product) => product.id === productId);
@@ -553,14 +613,14 @@ export function AdminDashboard() {
     };
 
     if (current) {
-      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprime: ${current.name}`), ...db.changeHistory];
+      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprimé: ${current.name}`), ...db.changeHistory];
     }
 
     if (productEditor?.productId === productId) {
       setProductEditor(null);
     }
 
-    void persist(nextDb, "Produit supprime.");
+    void persist(nextDb, "Produit supprimé.");
   }
   function handleAddProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -573,6 +633,7 @@ export function AdminDashboard() {
     const price = Number(newProduct.price);
     const oldPrice = Number(newProduct.oldPrice);
     const stock = Number(newProduct.stock);
+
     if (!Number.isFinite(price) || price <= 0) {
       setFeedback("Prix invalide.");
       return;
@@ -592,20 +653,23 @@ export function AdminDashboard() {
       return;
     }
 
+    const media = normalizeMediaItems(newProduct.media);
+    if (media.length === 0) {
+      setFeedback("Ajoute au moins un media du produit.");
+      return;
+    }
+
     const slug = slugify(newProduct.name);
     const id = `${slug}-${Date.now().toString(36)}`;
     const visual = makeVisual(newProduct.name);
-    const images = parseImageList(newProduct.imageUrl, newProduct.imageUrls);
-    if (images.length === 0) {
-      setFeedback("Ajoute au moins une photo du produit.");
-      return;
-    }
+    const primaryImage = media.find((item) => item.kind === "image")?.url ?? media[0]?.url;
+    const images = mediaToLegacyImages(media);
 
     const product: Product = {
       id,
       slug,
       name: newProduct.name.trim(),
-      description: newProduct.description.trim() || "Nouveau produit ajoute via admin.",
+      description: newProduct.description.trim() || "Nouveau produit ajouté via admin.",
       details: [
         "Produit configure depuis le dashboard admin",
         "Livraison campus disponible",
@@ -615,7 +679,6 @@ export function AdminDashboard() {
       clubOrCountry: newProduct.clubOrCountry,
       price,
       oldPrice: Number.isFinite(oldPrice) && oldPrice > price ? oldPrice : undefined,
-
       popularity: 65,
       noveltyRank: Number(new Date().toISOString().slice(0, 10).replaceAll("-", "")),
       sizes: newProduct.sizes
@@ -623,8 +686,9 @@ export function AdminDashboard() {
         .map((item) => item.trim())
         .filter(Boolean),
       visual,
-      imageUrl: images[0],
-      images: images.length > 1 ? images : undefined,
+      media,
+      imageUrl: primaryImage,
+      images: images.length > 0 ? images : undefined,
       gradient: gradientPool[Math.floor(Math.random() * gradientPool.length)],
       stock,
       isNew: true,
@@ -636,7 +700,7 @@ export function AdminDashboard() {
     };
 
     nextDb.changeHistory = [createChangeHistoryItem(`Produit ajoute: ${product.name}`), ...db.changeHistory];
-    void persist(nextDb, "Nouveau produit ajoute.");
+    void persist(nextDb, "Nouveau produit ajouté.");
     setNewProduct({
       name: "",
       category: "Internationaux",
@@ -647,27 +711,26 @@ export function AdminDashboard() {
       price: "29990",
       oldPrice: "",
       stock: "10",
-      imageUrl: "",
-      imageUrls: "",
+      media: createEmptyMedia(),
     });
     setNewProductCategoryMode("existing");
   }
 
   async function handleNewProductFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
-      .filter((file) => file.type.startsWith("image/"))
+      .filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/"))
       .slice(0, 6);
 
     if (files.length === 0) {
+      event.target.value = "";
       return;
     }
 
     try {
-      const urls = await uploadFilesToBlob(files, "products");
+      const media = await uploadFilesToBlob(files, "products");
       setNewProduct((previous) => ({
         ...previous,
-        imageUrl: urls[0] ?? "",
-        imageUrls: urls.slice(1).join(","),
+        media: normalizeMediaItems([...previous.media, ...media]),
       }));
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Upload produit impossible.");
@@ -678,21 +741,21 @@ export function AdminDashboard() {
 
   async function handleProductEditorFilesChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
-      .filter((file) => file.type.startsWith("image/"))
+      .filter((file) => file.type.startsWith("image/") || file.type.startsWith("video/"))
       .slice(0, 6);
 
     if (files.length === 0 || !productEditor) {
+      event.target.value = "";
       return;
     }
 
     try {
-      const urls = await uploadFilesToBlob(files, "products");
+      const media = await uploadFilesToBlob(files, "products");
       setProductEditor((previous) =>
         previous
           ? {
               ...previous,
-              primaryImage: urls[0] ?? "",
-              imageUrls: urls.slice(1).join(","),
+              media: normalizeMediaItems([...previous.media, ...media]),
             }
           : previous,
       );
@@ -968,11 +1031,11 @@ export function AdminDashboard() {
       const payload = (await response.json()) as { ok?: boolean; message?: string };
 
       if (!response.ok || !payload.ok) {
-        setFeedback(payload.message ?? "Reactivation impossible.");
+        setFeedback(payload.message ?? "Réactivation impossible.");
         return;
       }
 
-      setFeedback(payload.message ?? "Compte client reactive.");
+      setFeedback(payload.message ?? "Compte client réactivé.");
       await loadDatabase();
     } catch {
       setFeedback("Reactivation client impossible pour le moment.");
@@ -1174,7 +1237,7 @@ export function AdminDashboard() {
                       {overviewSalesStats.peakPoint ? overviewSalesStats.peakPoint.period : "-"}
                     </p>
                     <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistree"}
+                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistrée"}
                     </p>
                   </article>
                 </section>
@@ -1191,74 +1254,33 @@ export function AdminDashboard() {
                         label="Nom produit"
                         value={newProduct.name}
                         onChange={(value) => setNewProduct((prev) => ({ ...prev, name: value }))}
-                      />
-                      <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                        CatÃ©gorie
-                        <div className="flex gap-2">
-                          <select
-                            value={newProductCategoryMode}
-                            onChange={(event) =>
-                              setNewProductCategoryMode(event.target.value as "existing" | "new")
-                            }
-                            className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-                          >
-                            <option value="existing">Existante</option>
-                            <option value="new">Nouvelle</option>
-                          </select>
-                          {newProductCategoryMode === "existing" ? (
-                            <select
-                              value={newProduct.category}
-                              onChange={(event) =>
-                                setNewProduct((prev) => ({ ...prev, category: event.target.value }))
-                              }
-                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-                            >
-                              {categoryOptions.map((category) => (
-                                <option key={category} value={category}>
-                                  {category}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              value={newProduct.newCategory}
-                              onChange={(event) =>
-                                setNewProduct((prev) => ({ ...prev, newCategory: event.target.value }))
-                              }
-                              placeholder="Nouvelle categorie"
-                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
-                            />
-                          )}
-                        </div>
-                      </label>
-                      <Input
-                        label="Club/Pays"
-                        value={newProduct.clubOrCountry}
-                        onChange={(value) => setNewProduct((prev) => ({ ...prev, clubOrCountry: value }))}
-                      />
-                      <label className="md:col-span-2 flex flex-col gap-2 text-sm text-[var(--text-muted)]">
-                        Photos du produit
+                      />                      <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                        Medias du produit
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/*,video/*"
                           multiple
                           onChange={handleNewProductFilesChange}
                           className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                         />
-                        <span className="text-xs text-[var(--text-muted)]">Jusqu&apos;Ã  6 images, uploadÃ©es sur Vercel Blob.</span>
+                        <span className="text-xs text-[var(--text-muted)]">Jusqua 6 medias, enregistres directement en base.</span>
                       </label>
-                      {parseImageList(newProduct.imageUrl, newProduct.imageUrls).length > 0 ? (
+                      {newProduct.media.length > 0 ? (
                         <div className="md:col-span-2 grid grid-cols-3 gap-3">
-                          {parseImageList(newProduct.imageUrl, newProduct.imageUrls).map((src, index) => (
-                            <div key={`${src}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                              <Image
-                                src={src}
-                                alt={`Aper?u produit ${index + 1}`}
-                                width={180}
-                                height={180}
-                                unoptimized
-                                className="h-24 w-full object-cover"
-                              />
+                          {newProduct.media.map((item, index) => (
+                            <div key={`${item.url}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                              {item.kind === "video" ? (
+                                <video src={item.url} controls playsInline className="h-24 w-full object-cover" />
+                              ) : (
+                                <Image
+                                  src={item.url}
+                                  alt={`Aperçu média ${index + 1}`}
+                                  width={180}
+                                  height={180}
+                                  unoptimized
+                                  className="h-24 w-full object-cover"
+                                />
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1331,7 +1353,7 @@ export function AdminDashboard() {
                       <div className="mt-5 space-y-4">
                         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-muted)]">
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                            Apercu rapide
+                            Aperçu rapide
                           </p>
                           <p className="mt-2 text-base font-semibold text-[var(--text)]">
                             {selectedProduct.category} - {selectedProduct.clubOrCountry}
@@ -1347,7 +1369,7 @@ export function AdminDashboard() {
                             onChange={(value) => setProductEditor((prev) => prev ? { ...prev, name: value } : prev)}
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            CatÃ©gorie
+                            Catégorie
                             <div className="flex gap-2">
                               <select
                                 value={productEditor.categoryMode}
@@ -1398,29 +1420,33 @@ export function AdminDashboard() {
                               setProductEditor((prev) => (prev ? { ...prev, clubOrCountry: value } : prev))
                             }
                           />
-                          <label className="md:col-span-2 flex flex-col gap-2 text-sm text-[var(--text-muted)]">
-                            Photos du produit
+                          <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                            Médias du produit
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/*,video/*"
                               multiple
                               onChange={handleProductEditorFilesChange}
                               className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                             />
-                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistr?es automatiquement.</span>
+                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistrées automatiquement.</span>
                           </label>
-                          {parseImageList(productEditor.primaryImage, productEditor.imageUrls).length > 0 ? (
+                          {productEditor.media.length > 0 ? (
                             <div className="md:col-span-2 grid grid-cols-3 gap-3">
-                              {parseImageList(productEditor.primaryImage, productEditor.imageUrls).map((src, index) => (
-                                <div key={`${src}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
-                                  <Image
-                                    src={src}
-                                    alt={`Aper?u produit ${index + 1}`}
-                                    width={180}
-                                    height={180}
-                                    unoptimized
-                                    className="h-24 w-full object-cover"
-                                  />
+                              {productEditor.media.map((item, index) => (
+                                <div key={`${item.url}-${index}`} className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
+                                  {item.kind === "video" ? (
+                                    <video src={item.url} controls playsInline className="h-24 w-full object-cover" />
+                                  ) : (
+                                    <Image
+                                      src={item.url}
+                                      alt={`Aperçu média ${index + 1}`}
+                                      width={180}
+                                      height={180}
+                                      unoptimized
+                                      className="h-24 w-full object-cover"
+                                    />
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1529,43 +1555,30 @@ export function AdminDashboard() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-[var(--text)]">{product.name}</p>
-                            <p className="text-xs text-[var(--text-muted)]">
-                              {product.category} - {product.clubOrCountry}
-                            </p>
+                            <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">{product.category}</p>
+                            <h3 className="mt-1 text-lg font-semibold text-[var(--text)]">{product.name}</h3>
+                            <p className="text-sm text-[var(--text-muted)]">{product.clubOrCountry}</p>
                           </div>
-                          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                            {product.stock > 0 ? `Stock ${product.stock}` : "Rupture"}
-                          </span>
+                          <p className="text-sm font-semibold text-[var(--text)]">{formatPrice(product.price)}</p>
                         </div>
-
-                        <p className="mt-3 text-sm text-[var(--text-muted)]">{product.description}</p>
-
-                        <div className="mt-4 flex items-end justify-between gap-3">
-                          <div>
-                            <p className="text-lg font-semibold text-[var(--text)]">{formatPrice(product.price)}</p>
-                            {product.oldPrice ? (
-                              <p className="text-xs text-[var(--text-muted)] line-through">
-                                {formatPrice(product.oldPrice)}
-                              </p>
-                            ) : null}
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setProductEditor(createEmptyProductEditorState(product))}
-                              className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeProduct(product.id)}
-                              className="rounded-full border border-red-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-500"
-                            >
-                              Supprimer
-                            </button>
-                          </div>
+                        <div className="mt-4">
+                          <ProductGallery product={product} compact showThumbnails={false} className="h-40 w-full" />
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setProductEditor(createEmptyProductEditorState(product))}
+                            className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text)]"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeProduct(product.id)}
+                            className="rounded-full border border-red-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-500"
+                          >
+                            Supprimer
+                          </button>
                         </div>
                       </article>
                     ))}
@@ -1576,7 +1589,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistree.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrée.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -1588,7 +1601,6 @@ export function AdminDashboard() {
                 </section>
               </div>
             ) : null}
-
             {activeTab === "clients" ? (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-[var(--text)]">Base clients</h2>
@@ -1626,7 +1638,7 @@ export function AdminDashboard() {
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.reviews.length}</td>
                           <td className="px-3 py-2">
                             <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${client.deletedAt ? "border-amber-300 bg-amber-50 text-amber-700" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
-                              {client.deletedAt ? (canReactivateClient(client) ? "Supprime - reactivable" : "Supprime - bloque") : "Actif"}
+                              {client.deletedAt ? (canReactivateClient(client) ? "Supprimé - réactivable" : "Supprimé - bloqué") : "Actif"}
                             </span>
                             {client.deletedAt ? (
                               <p className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -1661,7 +1673,7 @@ export function AdminDashboard() {
                             onClick={() => void reactivateSelectedClient()}
                             className="rounded-full border border-emerald-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-600"
                           >
-                            Reactiver le compte
+                            Réactiver le compte
                           </button>
                         ) : (
                           <button
@@ -1840,7 +1852,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistree.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrée.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -2010,6 +2022,7 @@ function canReactivateClient(client: AdminClient): boolean {
   const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
 }
+
 
 
 

@@ -1,5 +1,13 @@
 export type ShopTheme = "light" | "dark";
 
+export type ProductMediaKind = "image" | "video";
+
+export interface ProductMediaItem {
+  url: string;
+  kind: ProductMediaKind;
+  label?: string;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -18,6 +26,7 @@ export interface Product {
   sizes: string[];
   visual: string;
   gradient: string;
+  media?: ProductMediaItem[];
   images?: string[];
   imageUrl?: string;
   stock: number;

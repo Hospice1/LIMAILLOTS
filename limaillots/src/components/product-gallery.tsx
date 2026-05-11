@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import type { Product } from "@/types/store";
+import type { Product, ProductMediaItem } from "@/types/store";
 
 interface ProductGalleryProps {
   product: Product;
@@ -42,7 +42,7 @@ function toDataUrl(svg: string): string {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
-function buildGeneratedGallery(product: Product): string[] {
+function buildGeneratedGallery(product: Product): ProductMediaItem[] {
   const palette = palettePool[hashSeed(product.slug) % palettePool.length];
   const title = escapeXml(product.name);
   const category = escapeXml(product.category);
@@ -52,7 +52,7 @@ function buildGeneratedGallery(product: Product): string[] {
   const accent = palette[1];
   const detail = palette[2];
 
-  return [
+  const imageUrls = [
     toDataUrl(`
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1400">
         <defs>
@@ -100,40 +100,79 @@ function buildGeneratedGallery(product: Product): string[] {
         <text x="130" y="780" fill="rgba(255,255,255,0.82)" font-size="34" font-family="Arial, Helvetica, sans-serif">Clique, swipe ou survole pour faire défiler.</text>
       </svg>
     `),
-    toDataUrl(`
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1400">
-        <defs>
-          <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#${bg}" />
-            <stop offset="100%" stop-color="#${detail}" />
-          </linearGradient>
-        </defs>
-        <rect width="1200" height="1400" rx="80" fill="url(#g3)" />
-        <circle cx="980" cy="240" r="250" fill="white" opacity="0.08" />
-        <circle cx="260" cy="1160" r="250" fill="white" opacity="0.05" />
-        <text x="80" y="150" fill="rgba(255,255,255,0.86)" font-size="50" font-family="Arial, Helvetica, sans-serif" font-weight="700">NOUVEAUTÉ</text>
-        <text x="80" y="320" fill="#ffffff" font-size="120" font-family="Arial, Helvetica, sans-serif" font-weight="900">${visual}</text>
-        <path d="M120 980c120-170 250-250 420-250 210 0 320 120 520 120 70 0 110-20 140-42v272H120z" fill="rgba(255,255,255,0.12)" />
-        <text x="80" y="1120" fill="#ffffff" font-size="74" font-family="Arial, Helvetica, sans-serif" font-weight="800">${title}</text>
-        <text x="80" y="1190" fill="rgba(255,255,255,0.84)" font-size="34" font-family="Arial, Helvetica, sans-serif">Edition premium à découvrir maintenant.</text>
-      </svg>
-    `),
   ];
+
+  return imageUrls.map((url, index) => ({
+    url,
+    kind: "image",
+    label: index === 0 ? "Aperçu généré" : undefined,
+  }));
 }
 
-function resolveGallery(product: Product): string[] {
-  const provided = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
-  const imageUrl = typeof product.imageUrl === "string" ? product.imageUrl.trim() : "";
+function normalizeMediaItem(item: string | ProductMediaItem): ProductMediaItem | null {
+  if (typeof item === "string") {
+    const trimmed = item.trim();
+    if (!trimmed) return null;
+    return {
+      url: trimmed,
+      kind: trimmed.match(/\.(mp4|webm|mov|m4v|ogg)(\?|#|$)/i) ? "video" : "image",
+    };
+  }
+
+  if (!item.url?.trim()) return null;
+  return {
+    url: item.url.trim(),
+    kind: item.kind === "video" ? "video" : "image",
+    label: item.label,
+  };
+}
+
+function resolveGallery(product: Product): ProductMediaItem[] {
+  const provided = Array.isArray(product.media) ? product.media.map(normalizeMediaItem).filter(Boolean) as ProductMediaItem[] : [];
 
   if (provided.length > 0) {
     return provided;
   }
 
-  if (imageUrl) {
-    return [imageUrl, ...buildGeneratedGallery(product).slice(1)];
+  const legacyImages = Array.from(
+    new Set([
+      typeof product.imageUrl === "string" ? product.imageUrl.trim() : "",
+      ...(Array.isArray(product.images) ? product.images : []),
+    ].filter(Boolean)),
+  ).map((url) => ({ url, kind: "image" as const }));
+
+  if (legacyImages.length > 0) {
+    return legacyImages;
   }
 
   return buildGeneratedGallery(product);
+}
+
+function MediaFrame({ item, alt, priority = false }: { item: ProductMediaItem; alt: string; priority?: boolean }) {
+  if (item.kind === "video") {
+    return (
+      <video
+        src={item.url}
+        controls
+        playsInline
+        preload="metadata"
+        className="h-full w-full object-cover"
+        aria-label={alt}
+      />
+    );
+  }
+
+  return (
+    <Image
+      unoptimized
+      src={item.url}
+      alt={alt}
+      fill
+      priority={priority}
+      sizes="(min-width:1024px) 55vw, 100vw"
+      className="object-cover transition duration-500 group-hover:scale-[1.03]"
+    />
+  );
 }
 
 export function ProductGallery({
@@ -147,7 +186,6 @@ export function ProductGallery({
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
 
-
   useEffect(() => {
     if (!isHovering || gallery.length < 2) {
       return undefined;
@@ -160,34 +198,24 @@ export function ProductGallery({
     return () => window.clearInterval(interval);
   }, [compact, gallery.length, isHovering]);
 
-  function nextImage() {
+  function nextItem() {
     if (gallery.length < 2) return;
     setActiveIndex((current) => (current + 1) % gallery.length);
   }
 
-  const activeImage = gallery[activeIndex % Math.max(gallery.length, 1)] ?? gallery[0] ?? "";
+  const activeItem = gallery[activeIndex % Math.max(gallery.length, 1)] ?? gallery[0] ?? null;
 
   return (
     <div
       className={`group relative overflow-hidden ${className}`}
       onPointerEnter={() => setIsHovering(true)}
       onPointerLeave={() => setIsHovering(false)}
-      onClick={clickCycles ? nextImage : undefined}
+      onClick={clickCycles ? nextItem : undefined}
       role="presentation"
     >
-      <div
-        className={`relative h-full w-full overflow-hidden ${compact ? "rounded-2xl" : "rounded-[2rem]"}`}
-      >
-        {activeImage ? (
-          <Image
-            unoptimized
-            src={activeImage}
-            alt={product.name}
-            fill
-            priority={compact ? false : true}
-            sizes={compact ? "(min-width:1280px) 28vw, (min-width:768px) 42vw, 100vw" : "(min-width:1024px) 55vw, 100vw"}
-            className="object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
+      <div className={`relative h-full w-full overflow-hidden ${compact ? "rounded-2xl" : "rounded-[2rem]"}`}>
+        {activeItem ? (
+          <MediaFrame item={activeItem} alt={product.name} priority={!compact} />
         ) : (
           <div className={`flex h-full w-full items-center justify-center bg-gradient-to-br ${product.gradient} text-4xl font-bold text-white`}>
             {product.visual}
@@ -205,7 +233,7 @@ export function ProductGallery({
 
       {showThumbnails && gallery.length > 1 ? (
         <div className="mt-3 grid grid-cols-3 gap-2">
-          {gallery.map((image, index) => (
+          {gallery.map((item, index) => (
             <button
               key={`${product.id}-${index}`}
               type="button"
@@ -218,16 +246,20 @@ export function ProductGallery({
                   ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20"
                   : "border-[var(--border)]"
               }`}
-              aria-label={`Voir l'image ${index + 1} du produit`}
+              aria-label={`Voir le média ${index + 1} du produit`}
             >
-              <Image
-                unoptimized
-                src={image}
-                alt={`${product.name} ${index + 1}`}
-                fill
-                sizes="120px"
-                className="object-cover"
-              />
+              {item.kind === "video" ? (
+                <video src={item.url} className="h-full w-full object-cover" muted playsInline />
+              ) : (
+                <Image
+                  unoptimized
+                  src={item.url}
+                  alt={`${product.name} ${index + 1}`}
+                  fill
+                  sizes="120px"
+                  className="object-cover"
+                />
+              )}
             </button>
           ))}
         </div>
@@ -235,7 +267,3 @@ export function ProductGallery({
     </div>
   );
 }
-
-
-
-

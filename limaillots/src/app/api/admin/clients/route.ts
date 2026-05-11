@@ -1,5 +1,5 @@
-﻿import { NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/server/admin-guard";
+import { NextResponse } from "next/server";
+import { requireAdminSession, requireSameOriginRequest } from "@/lib/server/admin-guard";
 import { deleteAdminClientByEmail, reactivateAdminClientByEmail } from "@/lib/server/admin-store";
 
 interface AdminClientActionBody {
@@ -9,6 +9,10 @@ interface AdminClientActionBody {
 }
 
 export async function POST(request: Request) {
+  const originCheck = requireSameOriginRequest(request);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
   const session = await requireAdminSession();
   if (!session.ok) {
     return session.response;

@@ -1,4 +1,4 @@
-﻿import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
+import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
 import {
   AdminClient,
   AdminPromoCode,
@@ -277,7 +277,7 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
 
   const parsed = input as Partial<AdminStateData>;
 
-  const products = Array.isArray(parsed.products) && parsed.products.length > 0
+  const products = Array.isArray(parsed.products)
     ? parsed.products
     : fallback.products;
 
@@ -293,11 +293,11 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
     reviews: normalizeClientReviews(client.reviews, fallback.clients[index]?.reviews ?? []),
   }));
 
-  const promoCodes = Array.isArray(parsed.promoCodes) && parsed.promoCodes.length > 0
+  const promoCodes = Array.isArray(parsed.promoCodes)
     ? parsed.promoCodes
     : fallback.promoCodes;
 
-  const sales = Array.isArray(parsed.sales) && parsed.sales.length > 0
+  const sales = Array.isArray(parsed.sales)
     ? parsed.sales
     : fallback.sales;
 

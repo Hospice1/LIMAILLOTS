@@ -1,5 +1,5 @@
-﻿import { NextResponse } from "next/server";
-import { uploadImageFilesToBlob } from "@/lib/server/blob-upload";
+import { NextResponse } from "next/server";
+import { uploadMediaFilesToBlob } from "@/lib/server/blob-upload";
 
 const DEFAULT_FOLDER = "uploads";
 
@@ -18,9 +18,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Aucun fichier fourni." }, { status: 400 });
     }
 
-    const urls = await uploadImageFilesToBlob(files, folder);
+    const media = await uploadMediaFilesToBlob(files, folder);
 
-    return NextResponse.json({ ok: true, urls });
+    return NextResponse.json({ ok: true, media, urls: media.map((item) => item.url) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Upload impossible.";
     return NextResponse.json({ ok: false, message }, { status: 400 });

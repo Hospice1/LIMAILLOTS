@@ -1,5 +1,8 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { AdminDashboard } from "@/components/admin/admin-dashboard";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Admin",

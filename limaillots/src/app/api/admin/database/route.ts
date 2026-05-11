@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { replaceAdminState, getAdminDatabase, isDatabaseBackedStore } from "@/lib/server/admin-store";
-import { requireAdminSession } from "@/lib/server/admin-guard";
+import { requireAdminSession, requireSameOriginRequest } from "@/lib/server/admin-guard";
 
 export async function GET() {
   const session = await requireAdminSession();
@@ -18,6 +18,10 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const originCheck = requireSameOriginRequest(request);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
   const session = await requireAdminSession();
   if (!session.ok) {
     return session.response;

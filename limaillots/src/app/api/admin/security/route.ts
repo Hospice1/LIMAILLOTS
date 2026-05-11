@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdminSession } from "@/lib/server/admin-guard";
+import { requireAdminSession, requireSameOriginRequest } from "@/lib/server/admin-guard";
 import { updateAdminSecurity } from "@/lib/server/admin-store";
 
 interface SecurityBody {
@@ -10,6 +10,10 @@ interface SecurityBody {
 }
 
 export async function PATCH(request: Request) {
+  const originCheck = requireSameOriginRequest(request);
+  if (!originCheck.ok) {
+    return originCheck.response;
+  }
   const session = await requireAdminSession();
   if (!session.ok) {
     return session.response;
