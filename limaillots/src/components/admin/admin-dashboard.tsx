@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -66,6 +66,10 @@ const emptyDatabase: AdminDatabase = {
   products: [],
   clients: [],
   promoCodes: [],
+  marquee: {
+    promoCode: "LIMAILL0T5",
+    message: "10% OFF POUR TOUTES COMMANDES AVEC LE CODE PROMO \"LIMAILL0T5\"",
+  },
   sales: [],
   orders: [],
   changeHistory: [],
@@ -244,8 +248,8 @@ function summarizeProductChange(before: Product, after: Product): string {
   if (before.visual !== after.visual) changes.push("visuel");
 
   return changes.length > 0
-    ? `Produit modifié: ${after.name} (${changes.join(", ")})`
-    : `Produit modifié: ${after.name}`;
+    ? `Produit modifiÃ©: ${after.name} (${changes.join(", ")})`
+    : `Produit modifiÃ©: ${after.name}`;
 }
 
 function buildProductPatchFromEditor(editor: ProductEditorState, current: Product): Partial<Product> {
@@ -344,8 +348,43 @@ export function AdminDashboard() {
       peakPoint,
     };
   }, [db.sales]);
-  const overviewMaxOrders = useMemo(() => {
-    return Math.max(...overviewSales.map((point) => point.orders), 1);
+  const overviewLineChart = useMemo(() => {
+    const width = 860;
+    const height = 240;
+    const paddingX = 28;
+    const paddingY = 24;
+    const maxOrders = Math.max(...overviewSales.map((point) => point.orders), 1);
+    const denominator = Math.max(overviewSales.length - 1, 1);
+
+    const points = overviewSales.map((point, index) => {
+      const x = paddingX + ((width - paddingX * 2) * index) / denominator;
+      const y = height - paddingY - (Math.max(point.orders, 0) / maxOrders) * (height - paddingY * 2);
+      return { x, y, period: point.period, orders: point.orders };
+    });
+
+    const path = points
+      .map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)},${point.y.toFixed(2)}`)
+      .join(" ");
+
+    const areaPath = points.length > 0
+      ? `M${points[0].x.toFixed(2)},${(height - paddingY).toFixed(2)} ${points
+          .map((point) => `L${point.x.toFixed(2)},${point.y.toFixed(2)}`)
+          .join(" ")} L${points[points.length - 1].x.toFixed(2)},${(height - paddingY).toFixed(2)} Z`
+      : "";
+
+    const yTicks = Array.from(new Set([0, Math.round(maxOrders / 2), maxOrders])).sort((a, b) => a - b);
+
+    return {
+      width,
+      height,
+      paddingX,
+      paddingY,
+      maxOrders,
+      points,
+      path,
+      areaPath,
+      yTicks,
+    };
   }, [overviewSales]);
   const promoByUsage = useMemo(
     () => [...db.promoCodes].sort((a, b) => b.usedCount - a.usedCount),
@@ -603,7 +642,7 @@ export function AdminDashboard() {
       }
     }
 
-    void persist(nextDb, quiet ? undefined : "Produit modifié.");
+    void persist(nextDb, quiet ? undefined : "Produit modifiÃ©.");
   }
   function removeProduct(productId: string) {
     const current = db.products.find((product) => product.id === productId);
@@ -613,14 +652,14 @@ export function AdminDashboard() {
     };
 
     if (current) {
-      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprimé: ${current.name}`), ...db.changeHistory];
+      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprimÃ©: ${current.name}`), ...db.changeHistory];
     }
 
     if (productEditor?.productId === productId) {
       setProductEditor(null);
     }
 
-    void persist(nextDb, "Produit supprimé.");
+    void persist(nextDb, "Produit supprimÃ©.");
   }
   function handleAddProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -669,7 +708,7 @@ export function AdminDashboard() {
       id,
       slug,
       name: newProduct.name.trim(),
-      description: newProduct.description.trim() || "Nouveau produit ajouté via admin.",
+      description: newProduct.description.trim() || "Nouveau produit ajoutÃ© via admin.",
       details: [
         "Produit configure depuis le dashboard admin",
         "Livraison campus disponible",
@@ -700,7 +739,7 @@ export function AdminDashboard() {
     };
 
     nextDb.changeHistory = [createChangeHistoryItem(`Produit ajoute: ${product.name}`), ...db.changeHistory];
-    void persist(nextDb, "Nouveau produit ajouté.");
+    void persist(nextDb, "Nouveau produit ajoutÃ©.");
     setNewProduct({
       name: "",
       category: "Internationaux",
@@ -796,17 +835,78 @@ export function AdminDashboard() {
     void persist(nextDb, "Avis mis a jour.");
   }
 
-  function updatePromoUsageLimit(promoId: string, value: string) {
-    const usageLimit = Number(value);
-    if (!Number.isFinite(usageLimit) || usageLimit < 1) {
+  function updatePromoField(
+    promoId: string,
+    field: "code" | "discountPercent" | "minSubtotal" | "usageLimit",
+    value: string,
+  ) {
+    const targetPromo = db.promoCodes.find((promo) => promo.id === promoId);
+    if (!targetPromo) {
       return;
     }
 
+    const nextPromos = db.promoCodes.map((promo) => {
+      if (promo.id !== promoId) {
+        return promo;
+      }
+
+      if (field === "code") {
+        const nextCode = value.trim().toUpperCase();
+        if (nextCode.length < 4) return promo;
+        if (db.promoCodes.some((item) => item.id !== promoId && item.code === nextCode)) return promo;
+        return { ...promo, code: nextCode };
+      }
+
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return promo;
+      }
+
+      if (field === "discountPercent") {
+        return parsed > 0 && parsed <= 90 ? { ...promo, discountPercent: parsed } : promo;
+      }
+
+      if (field === "minSubtotal") {
+        return parsed >= 0 ? { ...promo, minSubtotal: Math.floor(parsed) } : promo;
+      }
+
+      return parsed >= 1 ? { ...promo, usageLimit: Math.floor(parsed) } : promo;
+    });
+
+    const selectedPromo = nextPromos.find((promo) => promo.id === promoId);
+    const nextMarquee = selectedPromo && db.marquee.promoCode === targetPromo.code
+      ? {
+          ...db.marquee,
+          promoCode: selectedPromo.code,
+          message: db.marquee.message.includes(targetPromo.code)
+            ? buildMarqueeMessage(selectedPromo.code)
+            : db.marquee.message,
+        }
+      : db.marquee;
+
+    void persist({ ...db, promoCodes: nextPromos, marquee: nextMarquee });
+  }
+
+  function updateMarqueePromo(code: string) {
     const nextDb: AdminDatabase = {
       ...db,
-      promoCodes: db.promoCodes.map((promo) =>
-        promo.id === promoId ? { ...promo, usageLimit } : promo,
-      ),
+      marquee: {
+        promoCode: code,
+        message: buildMarqueeMessage(code),
+      },
+      changeHistory: [createChangeHistoryItem(`Bandeau promo actif: ${code}`), ...db.changeHistory],
+    };
+
+    void persist(nextDb, "Bandeau promo mis a jour.");
+  }
+
+  function updateMarqueeMessage(message: string) {
+    const nextDb: AdminDatabase = {
+      ...db,
+      marquee: {
+        promoCode: db.marquee.promoCode,
+        message,
+      },
     };
 
     void persist(nextDb);
@@ -856,9 +956,18 @@ export function AdminDashboard() {
       createdAt: new Date().toISOString().slice(0, 10),
     };
 
+    const nextPromoCodes = [promo, ...db.promoCodes];
+
     const nextDb: AdminDatabase = {
       ...db,
-      promoCodes: [promo, ...db.promoCodes],
+      promoCodes: nextPromoCodes,
+      marquee: db.marquee.promoCode
+        ? db.marquee
+        : {
+            promoCode: promo.code,
+            message: buildMarqueeMessage(promo.code),
+          },
+      changeHistory: [createChangeHistoryItem(`Code promo cree: ${promo.code}`), ...db.changeHistory],
     };
 
     void persist(nextDb, "Nouveau code promo cree.");
@@ -973,6 +1082,31 @@ export function AdminDashboard() {
     void persist(nextDb, "Graphique des commandes reinitialise.");
   }
 
+  async function resetClientsAndReviews() {
+    const confirmed = window.confirm(
+      "Reinitialiser completement la base clients et les avis ? Cette action efface aussi les commandes associees.",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setSelectedClientId("");
+
+    const nextDb: AdminDatabase = {
+      ...db,
+      clients: [],
+      orders: [],
+      sales: [],
+      changeHistory: [
+        createChangeHistoryItem("Base clients/avis reinitialisee."),
+        ...db.changeHistory,
+      ],
+    };
+
+    void persist(nextDb, "Base clients et avis reinitialisee.");
+  }
+
   async function deleteSelectedClient() {
     if (!selectedClient) {
       setFeedback("Selectionne un client.");
@@ -1031,11 +1165,11 @@ export function AdminDashboard() {
       const payload = (await response.json()) as { ok?: boolean; message?: string };
 
       if (!response.ok || !payload.ok) {
-        setFeedback(payload.message ?? "Réactivation impossible.");
+        setFeedback(payload.message ?? "RÃ©activation impossible.");
         return;
       }
 
-      setFeedback(payload.message ?? "Compte client réactivé.");
+      setFeedback(payload.message ?? "Compte client rÃ©activÃ©.");
       await loadDatabase();
     } catch {
       setFeedback("Reactivation client impossible pour le moment.");
@@ -1187,33 +1321,75 @@ export function AdminDashboard() {
                     </button>
                   </div>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
                     {overviewSales.length === 0 ? (
-                      <div className="xl:col-span-4 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-10 text-center text-sm text-[var(--text-muted)]">
+                      <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-4 py-10 text-center text-sm text-[var(--text-muted)]">
                         Aucun historique de commandes pour le moment. Le graphique se remplira apres les prochaines ventes.
                       </div>
                     ) : (
-                      overviewSales.map((point) => {
-                        const height = Math.max((point.orders / overviewMaxOrders) * 100, 10);
+                      <div className="relative">
+                        <svg
+                          viewBox={`0 0 ${overviewLineChart.width} ${overviewLineChart.height}`}
+                          className="h-60 w-full"
+                          role="img"
+                          aria-label="Graphique en courbe des commandes"
+                        >
+                          {overviewLineChart.yTicks.map((tick) => {
+                            const y = overviewLineChart.height - overviewLineChart.paddingY - (tick / overviewLineChart.maxOrders) * (overviewLineChart.height - overviewLineChart.paddingY * 2);
 
-                        return (
-                          <article key={point.period} className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4">
-                            <div className="flex h-40 items-end">
-                              <div className="flex h-full w-full items-end rounded-2xl bg-[linear-gradient(180deg,rgba(15,23,42,0.04),rgba(15,23,42,0.01))] p-2">
-                                <div
-                                  className="w-full rounded-t-2xl bg-gradient-to-t from-[var(--accent)] via-cyan-500 to-emerald-400 shadow-[0_18px_28px_rgba(0,0,0,0.14)] transition-transform duration-300 hover:scale-[1.02]"
-                                  style={{ height: `${height}%` }}
+                            return (
+                              <g key={`tick-${tick}`}>
+                                <line
+                                  x1={overviewLineChart.paddingX}
+                                  y1={y}
+                                  x2={overviewLineChart.width - overviewLineChart.paddingX}
+                                  y2={y}
+                                  stroke="var(--border)"
+                                  strokeDasharray="4 6"
+                                  strokeWidth="1"
                                 />
-                              </div>
-                            </div>
-                            <div className="mt-3 text-center">
-                              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{point.period}</p>
-                              <p className="mt-1 text-sm font-semibold text-[var(--text)]">{point.orders} commandes</p>
-                              <p className="text-xs text-[var(--text-muted)]">{formatPrice(point.revenue)}</p>
-                            </div>
-                          </article>
-                        );
-                      })
+                                <text
+                                  x={overviewLineChart.paddingX - 8}
+                                  y={y + 4}
+                                  textAnchor="end"
+                                  className="fill-[var(--text-muted)] text-[10px]"
+                                >
+                                  {tick}
+                                </text>
+                              </g>
+                            );
+                          })}
+
+                          {overviewLineChart.areaPath ? (
+                            <path d={overviewLineChart.areaPath} fill="url(#salesAreaGradient)" />
+                          ) : null}
+
+                          <defs>
+                            <linearGradient id="salesAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.35" />
+                              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.02" />
+                            </linearGradient>
+                          </defs>
+
+                          <path
+                            d={overviewLineChart.path}
+                            fill="none"
+                            stroke="var(--accent)"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+
+                          {overviewLineChart.points.map((point) => (
+                            <g key={`point-${point.period}`}>
+                              <circle cx={point.x} cy={point.y} r="4.5" fill="var(--accent)" />
+                              <text x={point.x} y={overviewLineChart.height - 6} textAnchor="middle" className="fill-[var(--text-muted)] text-[10px] uppercase">
+                                {point.period}
+                              </text>
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
                     )}
                   </div>
                 </section>
@@ -1237,7 +1413,7 @@ export function AdminDashboard() {
                       {overviewSalesStats.peakPoint ? overviewSalesStats.peakPoint.period : "-"}
                     </p>
                     <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistrée"}
+                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistrÃ©e"}
                     </p>
                   </article>
                 </section>
@@ -1254,7 +1430,47 @@ export function AdminDashboard() {
                         label="Nom produit"
                         value={newProduct.name}
                         onChange={(value) => setNewProduct((prev) => ({ ...prev, name: value }))}
-                      />                      <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                      />
+                      <label className="md:col-span-2 flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                        Categorie
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <select
+                            value={newProductCategoryMode}
+                            onChange={(event) => setNewProductCategoryMode(event.target.value as "existing" | "new")}
+                            className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                          >
+                            <option value="existing">Categorie existante</option>
+                            <option value="new">Nouvelle categorie</option>
+                          </select>
+
+                          {newProductCategoryMode === "existing" ? (
+                            <select
+                              value={newProduct.category}
+                              onChange={(event) => setNewProduct((prev) => ({ ...prev, category: event.target.value }))}
+                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                            >
+                              {categoryOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              value={newProduct.newCategory}
+                              onChange={(event) => setNewProduct((prev) => ({ ...prev, newCategory: event.target.value }))}
+                              placeholder="Nouvelle categorie"
+                              className="h-10 flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                            />
+                          )}
+                        </div>
+                      </label>
+                      <Input
+                        label="Club/Pays"
+                        value={newProduct.clubOrCountry}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, clubOrCountry: value }))}
+                      />
+                      <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
                         Medias du produit
                         <input
                           type="file"
@@ -1274,7 +1490,7 @@ export function AdminDashboard() {
                               ) : (
                                 <Image
                                   src={item.url}
-                                  alt={`Aperçu média ${index + 1}`}
+                                  alt={`AperÃ§u mÃ©dia ${index + 1}`}
                                   width={180}
                                   height={180}
                                   unoptimized
@@ -1353,7 +1569,7 @@ export function AdminDashboard() {
                       <div className="mt-5 space-y-4">
                         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-muted)]">
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                            Aperçu rapide
+                            AperÃ§u rapide
                           </p>
                           <p className="mt-2 text-base font-semibold text-[var(--text)]">
                             {selectedProduct.category} - {selectedProduct.clubOrCountry}
@@ -1369,7 +1585,7 @@ export function AdminDashboard() {
                             onChange={(value) => setProductEditor((prev) => prev ? { ...prev, name: value } : prev)}
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            Catégorie
+                            CatÃ©gorie
                             <div className="flex gap-2">
                               <select
                                 value={productEditor.categoryMode}
@@ -1421,7 +1637,7 @@ export function AdminDashboard() {
                             }
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            Médias du produit
+                            MÃ©dias du produit
                             <input
                               type="file"
                               accept="image/*,video/*"
@@ -1429,7 +1645,7 @@ export function AdminDashboard() {
                               onChange={handleProductEditorFilesChange}
                               className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                             />
-                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistrées automatiquement.</span>
+                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistrÃ©es automatiquement.</span>
                           </label>
                           {productEditor.media.length > 0 ? (
                             <div className="md:col-span-2 grid grid-cols-3 gap-3">
@@ -1440,7 +1656,7 @@ export function AdminDashboard() {
                                   ) : (
                                     <Image
                                       src={item.url}
-                                      alt={`Aperçu média ${index + 1}`}
+                                      alt={`AperÃ§u mÃ©dia ${index + 1}`}
                                       width={180}
                                       height={180}
                                       unoptimized
@@ -1589,7 +1805,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrée.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrÃ©e.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -1603,7 +1819,16 @@ export function AdminDashboard() {
             ) : null}
             {activeTab === "clients" ? (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-[var(--text)]">Base clients</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-xl font-semibold text-[var(--text)]">Base clients</h2>
+                  <button
+                    type="button"
+                    onClick={() => void resetClientsAndReviews()}
+                    className="rounded-full border border-red-300 px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-red-600"
+                  >
+                    Reinitialiser clients et avis
+                  </button>
+                </div>
                 <div className="mt-4 overflow-x-auto rounded-2xl border border-[var(--border)]">
                   <table className="min-w-[1180px] w-full text-left text-sm">
                     <thead className="bg-[var(--surface-muted)] text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">
@@ -1620,6 +1845,13 @@ export function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
+                      {clientsByActivity.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-3 py-8 text-center text-sm text-[var(--text-muted)]">
+                            Aucun client en base pour le moment.
+                          </td>
+                        </tr>
+                      ) : null}
                       {clientsByActivity.map((client) => (
                         <tr
                           key={client.id}
@@ -1638,7 +1870,7 @@ export function AdminDashboard() {
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.reviews.length}</td>
                           <td className="px-3 py-2">
                             <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${client.deletedAt ? "border-amber-300 bg-amber-50 text-amber-700" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
-                              {client.deletedAt ? (canReactivateClient(client) ? "Supprimé - réactivable" : "Supprimé - bloqué") : "Actif"}
+                              {client.deletedAt ? (canReactivateClient(client) ? "SupprimÃ© - rÃ©activable" : "SupprimÃ© - bloquÃ©") : "Actif"}
                             </span>
                             {client.deletedAt ? (
                               <p className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -1673,7 +1905,7 @@ export function AdminDashboard() {
                             onClick={() => void reactivateSelectedClient()}
                             className="rounded-full border border-emerald-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-600"
                           >
-                            Réactiver le compte
+                            RÃ©activer le compte
                           </button>
                         ) : (
                           <button
@@ -1785,20 +2017,27 @@ export function AdminDashboard() {
                     {db.promoCodes.map((promo) => (
                       <article
                         key={promo.id}
-                        className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 md:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_auto_auto] md:items-center"
+                        className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-3 md:grid-cols-[1.2fr_0.9fr_0.9fr_0.9fr_auto_auto] md:items-center"
                       >
-                        <div>
-                          <p className="font-semibold text-[var(--text)]">{promo.code}</p>
-                          <p className="text-xs text-[var(--text-muted)]">
-                            Utilise {promo.usedCount} / {promo.usageLimit}
-                          </p>
-                        </div>
-                        <p className="text-sm text-[var(--text-muted)]">-{promo.discountPercent}%</p>
-                        <p className="text-sm text-[var(--text-muted)]">Min {formatPrice(promo.minSubtotal)}</p>
+                        <Input
+                          label="Code"
+                          value={promo.code}
+                          onChange={(value) => updatePromoField(promo.id, "code", value)}
+                        />
+                        <Input
+                          label="Reduction %"
+                          value={String(promo.discountPercent)}
+                          onChange={(value) => updatePromoField(promo.id, "discountPercent", value)}
+                        />
+                        <Input
+                          label="Minimum XOF"
+                          value={String(promo.minSubtotal)}
+                          onChange={(value) => updatePromoField(promo.id, "minSubtotal", value)}
+                        />
                         <Input
                           label="Limite"
                           value={String(promo.usageLimit)}
-                          onChange={(value) => updatePromoUsageLimit(promo.id, value)}
+                          onChange={(value) => updatePromoField(promo.id, "usageLimit", value)}
                         />
                         <button
                           type="button"
@@ -1828,9 +2067,43 @@ export function AdminDashboard() {
                         >
                           Reset
                         </button>
+                        <p className="md:col-span-6 text-xs text-[var(--text-muted)]">
+                          Utilise {promo.usedCount} / {promo.usageLimit}
+                        </p>
                       </article>
                     ))}
                   </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
+                  <h2 className="text-xl font-semibold text-[var(--text)]">Bandeau promo defilant</h2>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                      Code a afficher
+                      <select
+                        value={db.marquee.promoCode}
+                        onChange={(event) => updateMarqueePromo(event.target.value)}
+                        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                      >
+                        {db.promoCodes.map((promo) => (
+                          <option key={promo.id} value={promo.code}>
+                            {promo.code}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
+                      Message du bandeau
+                      <input
+                        value={db.marquee.message}
+                        onChange={(event) => updateMarqueeMessage(event.target.value)}
+                        className="h-10 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)]"
+                      />
+                    </label>
+                  </div>
+                  <p className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
+                    {db.marquee.message}
+                  </p>
                 </div>
 
                 <div>
@@ -1852,7 +2125,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrée.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrÃ©e.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -1966,6 +2239,10 @@ function makeVisual(name: string): string {
   return letters || "NEW";
 }
 
+function buildMarqueeMessage(code: string): string {
+  return `10% OFF POUR TOUTES COMMANDES AVEC LE CODE PROMO "${code}"`;
+}
+
 function getActivityScore(client: AdminClient): number {
   return (
     client.totalSpent +
@@ -2022,6 +2299,18 @@ function canReactivateClient(client: AdminClient): boolean {
   const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

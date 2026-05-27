@@ -1,4 +1,5 @@
-import { MoonIcon, SearchIcon, SunIcon } from "@/components/icons";
+﻿import { MoonIcon, SearchIcon, SunIcon } from "@/components/icons";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { ProductFilters, ShopTheme } from "@/types/store";
 
 interface SearchFiltersProps {
@@ -7,6 +8,7 @@ interface SearchFiltersProps {
   clubsOrCountries: string[];
   sizes: string[];
   theme: ShopTheme;
+  language: SiteLanguage;
   resultCount: number;
   wishlistCount: number;
   onThemeToggle: () => void;
@@ -19,11 +21,14 @@ export function SearchFilters({
   clubsOrCountries,
   sizes,
   theme,
+  language,
   resultCount,
   wishlistCount,
   onThemeToggle,
   onFiltersChange,
 }: SearchFiltersProps) {
+  const copy = getSiteCopy(language);
+
   return (
     <section className="border-b border-[var(--border)] bg-[var(--surface)]/90 py-4 backdrop-blur-lg">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 sm:px-6 lg:px-8">
@@ -34,7 +39,7 @@ export function SearchFilters({
               id="search-products"
               value={filters.search}
               onChange={(event) => onFiltersChange({ search: event.target.value })}
-              placeholder="Rechercher maillot, crampons, accessoire (tolérance typo)..."
+              placeholder={copy.search.placeholder}
               className="h-12 w-full rounded-full border border-[var(--border)] bg-[var(--surface-muted)] pl-10 pr-4 text-sm text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
             />
           </label>
@@ -43,7 +48,7 @@ export function SearchFilters({
             type="button"
             onClick={onThemeToggle}
             className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:scale-[1.02]"
-            aria-label="Basculer entre mode clair et mode sombre"
+            aria-label={copy.search.themeAria}
           >
             {theme === "light" ? (
               <MoonIcon className="h-5 w-5" />
@@ -55,25 +60,31 @@ export function SearchFilters({
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <SelectFilter
-            label="Catégorie"
+            label={copy.search.labels.category}
             value={filters.category}
             onChange={(value) => onFiltersChange({ category: value })}
-            options={["Tous", ...categories]}
+            options={[{ label: copy.search.all, value: "Tous" }, ...categories.map((category) => ({ label: category, value: category }))]}
           />
           <SelectFilter
-            label="Prix"
+            label={copy.search.labels.price}
             value={filters.priceRange}
             onChange={(value) => onFiltersChange({ priceRange: value })}
-            options={["Tous", "<20000", "20000-40000", "40000-70000", ">70000"]}
+            options={[
+              { label: copy.search.all, value: "Tous" },
+              { label: "<20000", value: "<20000" },
+              { label: "20000-40000", value: "20000-40000" },
+              { label: "40000-70000", value: "40000-70000" },
+              { label: ">70000", value: ">70000" },
+            ]}
           />
           <SelectFilter
-            label="Taille"
+            label={copy.search.labels.size}
             value={filters.size}
             onChange={(value) => onFiltersChange({ size: value })}
-            options={["Toutes", ...sizes]}
+            options={[{ label: copy.search.allSizes, value: "Toutes" }, ...sizes.map((size) => ({ label: size, value: size }))]}
           />
           <SelectFilter
-            label="Popularité"
+            label={copy.search.labels.sort}
             value={filters.sortBy}
             onChange={(value) =>
               onFiltersChange({
@@ -81,24 +92,24 @@ export function SearchFilters({
               })
             }
             options={[
-              { label: "Popularité", value: "popular" },
-              { label: "Nouveautés", value: "newest" },
-              { label: "Prix croissant", value: "price-asc" },
-              { label: "Prix décroissant", value: "price-desc" },
+              { label: copy.search.sortOptions.popular, value: "popular" },
+              { label: copy.search.sortOptions.newest, value: "newest" },
+              { label: copy.search.sortOptions.priceAsc, value: "price-asc" },
+              { label: copy.search.sortOptions.priceDesc, value: "price-desc" },
             ]}
           />
           <SelectFilter
-            label="Club / Pays"
+            label={copy.search.labels.clubCountry}
             value={filters.clubOrCountry}
             onChange={(value) => onFiltersChange({ clubOrCountry: value })}
-            options={["Tous", ...clubsOrCountries]}
+            options={[{ label: copy.search.all, value: "Tous" }, ...clubsOrCountries.map((entry) => ({ label: entry, value: entry }))]}
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
-          <p>{resultCount} produits affichés</p>
+          <p>{resultCount} {copy.search.results}</p>
           <span className="h-1 w-1 rounded-full bg-[var(--border)]" />
-          <p>{wishlistCount} favoris</p>
+          <p>{wishlistCount} {copy.search.favorites}</p>
         </div>
       </div>
     </section>
@@ -137,3 +148,5 @@ function SelectFilter({ label, value, options, onChange }: SelectFilterProps) {
     </label>
   );
 }
+
+

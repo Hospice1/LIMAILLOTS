@@ -1,26 +1,29 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { ArrowRightIcon } from "@/components/icons";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 
 interface HeroSectionProps {
+  language: SiteLanguage;
   onCtaClick: () => void;
   onQuickCategorySelect: (value: "Maillots" | "Crampons" | "Accessoires") => void;
 }
 
-export function HeroSection({ onCtaClick, onQuickCategorySelect }: HeroSectionProps) {
+export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: HeroSectionProps) {
+  const copy = getSiteCopy(language);
+
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-8 pt-10 sm:px-6 md:grid-cols-2 md:items-center lg:px-8">
       <div>
         <p className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
-          Boutique football premium
+          {copy.hero.badge}
         </p>
         <h1 className="mt-5 text-4xl font-hero font-semibold leading-tight text-[var(--text)] md:text-5xl lg:text-6xl">
-          LIMAILLOTS, la nouvelle base des etudiants fans de foot.
+          {copy.hero.title}
         </h1>
         <p className="mt-5 max-w-xl text-base text-[var(--text-muted)] md:text-lg">
-          Maillots iconiques, crampons performants et accessoires utiles au quotidien.
-          Design propre, selection moderne et experience d&apos;achat fluide sur mobile et desktop.
+          {copy.hero.subtitle}
         </p>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <button
@@ -28,18 +31,22 @@ export function HeroSection({ onCtaClick, onQuickCategorySelect }: HeroSectionPr
             onClick={onCtaClick}
             className="inline-flex items-center gap-2 rounded-full bg-[var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:translate-x-0.5"
           >
-            Acheter maintenant
+            {copy.hero.cta}
             <ArrowRightIcon className="h-4 w-4" />
           </button>
           <div className="flex flex-wrap gap-2">
-            {(["Maillots", "Crampons", "Accessoires"] as const).map((label) => (
+            {[
+              { value: "Maillots" as const, label: copy.hero.quick.maillots },
+              { value: "Crampons" as const, label: copy.hero.quick.crampons },
+              { value: "Accessoires" as const, label: copy.hero.quick.accessoires },
+            ].map((item) => (
               <button
-                key={label}
+                key={item.value}
                 type="button"
-                onClick={() => onQuickCategorySelect(label)}
+                onClick={() => onQuickCategorySelect(item.value)}
                 className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
               >
-                {label}
+                {item.label}
               </button>
             ))}
           </div>
@@ -53,22 +60,22 @@ export function HeroSection({ onCtaClick, onQuickCategorySelect }: HeroSectionPr
             <VisualTile
               className="col-span-2 h-44 md:h-52"
               imageSrc="/hero-boutique/maillots.jpg"
-              label="Maillots"
+              label={copy.hero.quick.maillots}
             />
             <VisualTile
               className="h-36 md:h-40"
               imageSrc="/hero-boutique/crampons.jpg"
-              label="Crampons"
+              label={copy.hero.quick.crampons}
             />
             <VisualTile
               className="h-36 md:h-40"
               imageSrc="/hero-boutique/accessoires.jpg"
-              label="Accessoires"
+              label={copy.hero.quick.accessoires}
             />
           </div>
 
           <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
-            <span className="text-sm font-semibold text-[var(--text)]">Livraison Campus Express</span>
+            <span className="text-sm font-semibold text-[var(--text)]">{copy.hero.delivery}</span>
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
               24H
             </span>
@@ -95,7 +102,7 @@ function VisualTile({ className, imageSrc, label }: VisualTileProps) {
         src={imageSrc}
         alt={label}
         fill
-        priority={label === "Maillots"}
+        priority={imageSrc.includes("maillots")}
         sizes="(min-width: 768px) 40vw, 100vw"
         className="object-cover"
       />
@@ -106,3 +113,4 @@ function VisualTile({ className, imageSrc, label }: VisualTileProps) {
     </article>
   );
 }
+

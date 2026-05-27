@@ -5,7 +5,6 @@ import {
   DEFAULT_ADMIN_EMAIL,
   DEFAULT_ADMIN_PASSWORD,
   normalizeAdminStateData,
-  STOREFRONT_CLIENT_ID,
 } from "@/data/admin-defaults";
 import {
   AdminClient,
@@ -89,39 +88,6 @@ function formatSalesPeriod(date: Date): string {
   const label = new Intl.DateTimeFormat("fr-FR", { month: "short" }).format(date);
   const cleaned = label.replace(".", "").trim();
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-}
-
-function createStorefrontClient(dateLabel: string): AdminClient {
-  return {
-    id: STOREFRONT_CLIENT_ID,
-    fullName: "Client Boutique Web",
-    email: "client.web@limaillots.shop",
-    phone: "N/A",
-    city: "En ligne",
-    totalSpent: 0,
-    completedOrders: 0,
-    pendingCarts: 0,
-    favoriteProductIds: [],
-    promoCodesUsed: [],
-    reviews: [],
-    notifications: [],
-    lastActivityAt: dateLabel,
-  };
-}
-
-function ensureStorefrontClient(clients: AdminClient[], dateLabel: string): {
-  clients: AdminClient[];
-  index: number;
-} {
-  const existingIndex = clients.findIndex((client) => client.id === STOREFRONT_CLIENT_ID);
-  if (existingIndex >= 0) {
-    return { clients, index: existingIndex };
-  }
-
-  return {
-    clients: [createStorefrontClient(dateLabel), ...clients],
-    index: 0,
-  };
 }
 
 function createClientFromEmail(
@@ -436,6 +402,7 @@ function getPublicStateShape(state: AdminStateData): PublicStoreState {
   return {
     products: cloneValue(state.products),
     promoCodes: cloneValue(state.promoCodes),
+    marquee: cloneValue(state.marquee),
     clients: cloneValue(state.clients),
     orders: cloneValue(state.orders),
   };
@@ -869,11 +836,40 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
   const dateLabel = date.toISOString().slice(0, 10);
   const normalizedEmail = input.clientEmail?.trim().toLowerCase() ?? "";
 
-  let client: AdminClient;
+  if (!normalizedEmail) {
+    return {
+      ok: false,
+      message: "Connexion client requise pour finaliser la commande.",
+      subtotal: 0,
+      discountAmount: 0,
+      finalPrice: 0,
+      appliedPromoCode: "",
+      ...getPublicStateShape(currentState),
+    };
+  }
 
-  if (normalizedEmail) {
-    const authRecord = await findClientUserByEmail(normalizedEmail);
-    if (authRecord?.deletedAt) {
+  const authRecord = await findClientUserByEmail(normalizedEmail);
+  if (authRecord?.deletedAt) {
+    return {
+      ok: false,
+      message: "Ce compte a ete supprime et ne peut plus acheter.",
+      subtotal: 0,
+      discountAmount: 0,
+      finalPrice: 0,
+      appliedPromoCode: "",
+      ...getPublicStateShape(currentState),
+    };
+  }
+
+  let client: AdminClient;
+  const existingIndex = currentState.clients.findIndex(
+    (item) => item.email.toLowerCase() === normalizedEmail,
+  );
+
+  if (existingIndex >= 0) {
+    client = currentState.clients[existingIndex];
+
+    if (client.deletedAt) {
       return {
         ok: false,
         message: "Ce compte a ete supprime et ne peut plus acheter.",
@@ -884,33 +880,9 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
         ...getPublicStateShape(currentState),
       };
     }
-
-    const existingIndex = currentState.clients.findIndex(
-      (item) => item.email.toLowerCase() === normalizedEmail,
-    );
-
-    if (existingIndex >= 0) {
-      client = currentState.clients[existingIndex];
-
-      if (client.deletedAt) {
-        return {
-          ok: false,
-          message: "Ce compte a ete supprime et ne peut plus acheter.",
-          subtotal: 0,
-          discountAmount: 0,
-          finalPrice: 0,
-          appliedPromoCode: "",
-          ...getPublicStateShape(currentState),
-        };
-      }
-    } else {
-      client = createClientFromEmail(normalizedEmail, dateLabel);
-      currentState.clients.unshift(client);
-    }
   } else {
-    const ensuredClients = ensureStorefrontClient(currentState.clients, dateLabel);
-    currentState.clients = ensuredClients.clients;
-    client = currentState.clients[ensuredClients.index];
+    client = createClientFromEmail(normalizedEmail, dateLabel);
+    currentState.clients.unshift(client);
   }
   client.totalSpent += finalPrice;
   client.completedOrders += 1;

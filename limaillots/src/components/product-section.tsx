@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { ProductCard } from "@/components/product-card";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { Product } from "@/types/store";
 
 interface ProductSectionProps {
   products: Product[];
+  language: SiteLanguage;
   wishlistIds: string[];
   ratingByProductId: Record<string, number>;
   onAddToCart: (productId: string) => void;
@@ -16,12 +18,14 @@ const INITIAL_VISIBLE_COUNT = 12;
 
 export function ProductSection({
   products,
+  language,
   wishlistIds,
   ratingByProductId,
   onAddToCart,
   onToggleWishlist,
 }: ProductSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const copy = getSiteCopy(language);
 
   const visibleCount = isExpanded ? products.length : Math.min(INITIAL_VISIBLE_COUNT, products.length);
   const visibleProducts = products.slice(0, visibleCount);
@@ -33,10 +37,10 @@ export function ProductSection({
       <div className="mb-6 flex items-end justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-            Boutique
+            {copy.products.kicker}
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-[var(--text)] md:text-3xl">
-            Produits recommandés
+            {copy.products.title}
           </h2>
         </div>
       </div>
@@ -44,10 +48,10 @@ export function ProductSection({
       {products.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-10 text-center">
           <p className="text-base font-medium text-[var(--text)]">
-            Aucun produit ne correspond à ces filtres.
+            {copy.products.emptyTitle}
           </p>
           <p className="mt-2 text-sm text-[var(--text-muted)]">
-            Modifie les filtres pour afficher davantage d&apos;articles.
+            {copy.products.emptySubtitle}
           </p>
         </div>
       ) : (
@@ -74,7 +78,7 @@ export function ProductSection({
                   onClick={() => setIsExpanded(true)}
                   className="rounded-full bg-[var(--accent)] px-5 py-2 text-sm font-semibold text-white"
                 >
-                  Voir plus
+                  {copy.products.more}
                 </button>
               ) : null}
               {canCollapse ? (
@@ -83,7 +87,7 @@ export function ProductSection({
                   onClick={() => setIsExpanded(false)}
                   className="rounded-full border border-[var(--border)] px-5 py-2 text-sm font-semibold text-[var(--text)]"
                 >
-                  Voir moins
+                  {copy.products.less}
                 </button>
               ) : null}
             </div>

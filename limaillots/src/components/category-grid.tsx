@@ -1,26 +1,30 @@
-import Image from "next/image";
+﻿import Image from "next/image";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { CategoryItem } from "@/types/store";
 
 interface CategoryGridProps {
   items: CategoryItem[];
+  language: SiteLanguage;
   activeLabel: string;
   onSelect: (item: CategoryItem) => void;
 }
 
-export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps) {
+export function CategoryGrid({ items, language, activeLabel, onSelect }: CategoryGridProps) {
+  const copy = getSiteCopy(language);
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-            Navigation rapide
+            {copy.categories.kicker}
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-[var(--text)] md:text-3xl">
-            Explore les collections
+            {copy.categories.title}
           </h2>
         </div>
         <span className="hidden rounded-full border border-[var(--border)] px-3 py-1 text-xs font-medium text-[var(--text-muted)] md:inline-flex">
-          Filtre actif: {activeLabel}
+          {copy.categories.activeFilter}: {activeLabel}
         </span>
       </div>
 
@@ -59,7 +63,7 @@ export function CategoryGrid({ items, activeLabel, onSelect }: CategoryGridProps
                 {item.label}
               </p>
               <p className="mt-1 text-center text-xs text-[var(--text-muted)]">
-                {isActive ? "Actif" : "Voir"}
+                {isActive ? copy.categories.active : copy.categories.view}
               </p>
             </button>
           );

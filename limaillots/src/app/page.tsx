@@ -17,7 +17,6 @@ import {
   categoryItems,
   products as fallbackProducts,
   promoCodes as fallbackPromoCodes,
-  promoMessage,
 } from "@/data/store-data";
 import { createDefaultAdminStateData } from "@/data/admin-defaults";
 import {
@@ -33,7 +32,8 @@ import {
   parseFilterStateFromSearch,
   TagFilter,
 } from "@/lib/url-filters";
-import { AdminClient, AdminOrder, AdminPromoCode } from "@/types/admin";
+import { detectPreferredLanguage, SiteLanguage } from "@/lib/i18n";
+import { AdminClient, AdminMarqueeSettings, AdminOrder, AdminPromoCode } from "@/types/admin";
 import { CartItem, Product, ProductFilters, ShopTheme } from "@/types/store";
 
 const CategoryGrid = dynamic(
@@ -74,6 +74,11 @@ const fallbackPromoState: AdminPromoCode[] = fallbackPromoCodes.map((promo, inde
   createdAt: "2026-01-01",
 }));
 
+const fallbackMarquee: AdminMarqueeSettings = {
+  promoCode: fallbackPromoState[0]?.code ?? "LIMAILL0T5",
+  message: `10% OFF POUR TOUTES COMMANDES AVEC LE CODE PROMO "${fallbackPromoState[0]?.code ?? "LIMAILL0T5"}"`,
+};
+
 function getInitialFilterState(): { filters: ProductFilters; tagFilter: TagFilter } {
   if (typeof window === "undefined") {
     return { filters: defaultFilters, tagFilter: "all" };
@@ -108,6 +113,19 @@ export default function Home() {
       : "light";
   });
 
+  const [language, setLanguage] = useState<SiteLanguage>(() => {
+    if (typeof window === "undefined") {
+      return "fr";
+    }
+
+    const storedLanguage = window.localStorage.getItem("limaillots-language");
+    if (storedLanguage === "fr" || storedLanguage === "en" || storedLanguage === "pt") {
+      return storedLanguage;
+    }
+
+    return detectPreferredLanguage(window.navigator.language);
+  });
+
   const [cartItems, setCartItems] = useState<CartItem[]>(() => readCartFromStorage());
   const [wishlistIds, setWishlistIds] = useState<string[]>(() => readWishlistFromStorage());
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -115,6 +133,7 @@ export default function Home() {
 
   const [appliedPromoCode, setAppliedPromoCode] = useState("");
   const [promoMessageText, setPromoMessageText] = useState("");
+  const [marquee, setMarquee] = useState<AdminMarqueeSettings>(fallbackMarquee);
 
   const newArrivalProducts = useMemo(
     () =>
@@ -138,6 +157,7 @@ export default function Home() {
         data?: {
           products?: Product[];
           promoCodes?: AdminPromoCode[];
+          marquee?: AdminMarqueeSettings;
           clients?: AdminClient[];
           orders?: AdminOrder[];
         };
@@ -154,6 +174,10 @@ export default function Home() {
 
       if (Array.isArray(payload.data.promoCodes) && payload.data.promoCodes.length > 0) {
         setPromoCodes(payload.data.promoCodes);
+      }
+
+      if (payload.data.marquee && typeof payload.data.marquee.message === "string") {
+        setMarquee(payload.data.marquee);
       }
 
       if (Array.isArray(payload.data.clients)) {
@@ -327,6 +351,11 @@ export default function Home() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("limaillots-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("lang", language);
+    localStorage.setItem("limaillots-language", language);
+  }, [language]);
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => {
@@ -624,16 +653,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
-      <PromoBanner message={promoMessage} />
+      <PromoBanner message={marquee.message || fallbackMarquee.message} />
 
       <MainNavbar
         cartCount={totalItems}
+        language={language}
+        onLanguageChange={setLanguage}
         onMenuToggle={() => setIsMenuOpen((open) => !open)}
         onCartToggle={() => setIsCartOpen((open) => !open)}
       />
 
       <SearchFilters
         filters={filters}
+        language={language}
         categories={categoryOptions}
         clubsOrCountries={clubsOrCountries}
         sizes={sizes}
@@ -649,10 +681,11 @@ export default function Home() {
       />
 
       <main>
-        <HeroSection onCtaClick={jumpToProducts} onQuickCategorySelect={handleHeroQuickCategorySelect} />
+        <HeroSection language={language} onCtaClick={jumpToProducts} onQuickCategorySelect={handleHeroQuickCategorySelect} />
 
         <NewArrivalsRail
           products={newArrivalProducts}
+          language={language}
           wishlistIds={wishlistIds}
           ratingByProductId={productRatingById}
           onAddToCart={addToCart}
@@ -663,12 +696,14 @@ export default function Home() {
 
         <CategoryGrid
           items={categoryItems}
+          language={language}
           activeLabel={activeCategoryLabel}
           onSelect={handleCategorySelect}
         />
 
         <ProductSection
           products={filteredProducts}
+          language={language}
           wishlistIds={wishlistIds}
           ratingByProductId={productRatingById}
           onAddToCart={addToCart}
@@ -681,17 +716,19 @@ export default function Home() {
         />
       </main>
 
-      <Footer />
+      <Footer language={language} />
 
       <MobileMenu
         open={isMenuOpen}
         items={categoryItems}
+        language={language}
         onClose={() => setIsMenuOpen(false)}
         onCategorySelect={handleCategorySelect}
       />
 
       <CartDrawer
         open={isCartOpen}
+        language={language}
         items={cartProducts}
         totalItems={totalItems}
         totalPrice={totalPrice}
@@ -710,6 +747,19 @@ export default function Home() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

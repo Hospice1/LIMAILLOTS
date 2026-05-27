@@ -55,6 +55,11 @@ export interface AdminPromoCode {
   createdAt: string;
 }
 
+export interface AdminMarqueeSettings {
+  promoCode: string;
+  message: string;
+}
+
 export interface AdminSalesPoint {
   period: string;
   revenue: number;
@@ -79,6 +84,7 @@ export interface AdminStateData {
   products: Product[];
   clients: AdminClient[];
   promoCodes: AdminPromoCode[];
+  marquee: AdminMarqueeSettings;
   sales: AdminSalesPoint[];
   orders: AdminOrder[];
   changeHistory: AdminChangeHistoryItem[];
@@ -97,6 +103,7 @@ export interface AdminDatabase extends AdminStateData {
 export interface PublicStoreState {
   products: Product[];
   promoCodes: AdminPromoCode[];
+  marquee: AdminMarqueeSettings;
   clients: AdminClient[];
   orders: AdminOrder[];
 }

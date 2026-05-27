@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowRightIcon } from "@/components/icons";
 import { ProductCard } from "@/components/product-card";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { Product } from "@/types/store";
 
 interface NewArrivalsRailProps {
   products: Product[];
+  language: SiteLanguage;
   wishlistIds: string[];
   ratingByProductId: Record<string, number>;
   onAddToCart: (productId: string) => void;
@@ -16,6 +18,7 @@ interface NewArrivalsRailProps {
 
 export function NewArrivalsRail({
   products,
+  language,
   wishlistIds,
   ratingByProductId,
   onAddToCart,
@@ -23,6 +26,7 @@ export function NewArrivalsRail({
 }: NewArrivalsRailProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const copy = getSiteCopy(language);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -58,14 +62,14 @@ export function NewArrivalsRail({
       <div className="flex items-end justify-between gap-3 pb-4">
         <div>
           <h2 className="text-2xl font-semibold text-[var(--text)] md:text-3xl">
-            Nouveautés en mouvement
+            {copy.arrivals.title}
           </h2>
         </div>
         <Link
           href="#products"
           className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)]"
         >
-          Voir la boutique
+          {copy.arrivals.cta}
           <ArrowRightIcon className="h-4 w-4" />
         </Link>
       </div>

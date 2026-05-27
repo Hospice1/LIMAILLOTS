@@ -1,4 +1,13 @@
-export function Footer() {
+﻿import { LimaillotsLogo } from "@/components/limaillots-logo";
+import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
+
+interface FooterProps {
+  language: SiteLanguage;
+}
+
+export function Footer({ language }: FooterProps) {
+  const copy = getSiteCopy(language);
+
   return (
     <footer
       id="footer"
@@ -6,32 +15,32 @@ export function Footer() {
     >
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-3 lg:px-8">
         <div>
-          <p className="text-2xl font-black tracking-[0.2em] text-[var(--text)]">LIMAILLOTS</p>
+          <LimaillotsLogo className="h-10 w-[170px] text-[var(--text)]" />
           <p className="mt-3 max-w-sm text-sm text-[var(--text-muted)]">
-            Boutique football moderne pour etudiants, supporters et joueurs.
+            {copy.footer.description}
           </p>
         </div>
 
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
-            Liens rapides
+            {copy.footer.linksTitle}
           </h3>
           <nav className="mt-3 space-y-2 text-sm text-[var(--text-muted)]">
             <a href="#" className="block transition hover:text-[var(--accent)]">
-              Accueil
+              {copy.footer.links.home}
             </a>
             <a href="#products" className="block transition hover:text-[var(--accent)]">
-              Boutique
+              {copy.footer.links.shop}
             </a>
             <a href="#footer" className="block transition hover:text-[var(--accent)]">
-              Contact
+              {copy.footer.links.contact}
             </a>
           </nav>
         </div>
 
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
-            Contact & Reseaux
+            {copy.footer.contactTitle}
           </h3>
           <div className="mt-3 space-y-2 text-sm text-[var(--text-muted)]">
             <a
@@ -68,7 +77,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-[var(--border)] py-4 text-center text-xs text-[var(--text-muted)]">
-        © Designed by iamyotto | All rights reserved.
+        © {copy.footer.copyright}
       </div>
     </footer>
   );
