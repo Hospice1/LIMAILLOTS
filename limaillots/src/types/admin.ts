@@ -1,4 +1,4 @@
-﻿import { Product } from "@/types/store";
+import { Product } from "@/types/store";
 
 export type ReviewStatus = "published" | "pending" | "removed";
 
@@ -40,6 +40,8 @@ export interface AdminClient {
   reviews: ClientReview[];
   notifications: ClientNotification[];
   lastActivityAt: string;
+  deliveryAddress?: string;
+  wantsDelivery?: boolean;
   deletedAt?: string;
   deletedReason?: string;
 }
@@ -72,6 +74,10 @@ export interface AdminOrder {
   total: number;
   status: "completed" | "pending";
   promoCode?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  wantsDelivery?: boolean;
   items: Array<{
     productId: string;
     quantity: number;

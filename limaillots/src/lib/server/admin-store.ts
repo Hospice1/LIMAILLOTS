@@ -1,4 +1,4 @@
-﻿import { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { compare, hash, hashSync } from "bcryptjs";
 import {
   createDefaultAdminStateData,
@@ -15,7 +15,7 @@ import {
   PublicStoreState,
   ReviewStatus,
 } from '@/types/admin';
-import { Product } from "@/types/store";
+import { CheckoutCustomer, Product } from "@/types/store";
 import { getPrismaClient } from "@/lib/server/prisma";
 import { deleteClientUserByEmail, findClientUserByEmail, reactivateClientUserByEmail } from "@/lib/server/client-users";
 
@@ -37,6 +37,7 @@ interface CheckoutInput {
   wishlistIds: string[];
   promoCode?: string;
   clientEmail?: string;
+  customer?: Partial<CheckoutCustomer>;
 }
 
 interface CheckoutResult {
@@ -46,6 +47,7 @@ interface CheckoutResult {
   discountAmount: number;
   finalPrice: number;
   appliedPromoCode: string;
+  orderId?: string;
   products: Product[];
   promoCodes: AdminPromoCode[];
   clients: AdminClient[];
@@ -93,7 +95,7 @@ function formatSalesPeriod(date: Date): string {
 function createClientFromEmail(
   email: string,
   dateLabel: string,
-  profile?: { fullName?: string; phone?: string; city?: string },
+  profile?: { fullName?: string; phone?: string; city?: string; deliveryAddress?: string; wantsDelivery?: boolean },
 ): AdminClient {
   const name = profile?.fullName?.trim() || email.split("@")[0] || "Client";
   return {
@@ -102,6 +104,8 @@ function createClientFromEmail(
     email,
     phone: profile?.phone?.trim() ?? "",
     city: profile?.city?.trim() ?? "",
+    deliveryAddress: profile?.deliveryAddress?.trim() ?? "",
+    wantsDelivery: Boolean(profile?.wantsDelivery),
     totalSpent: 0,
     completedOrders: 0,
     pendingCarts: 0,
@@ -834,12 +838,39 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
 
   const date = new Date();
   const dateLabel = date.toISOString().slice(0, 10);
-  const normalizedEmail = input.clientEmail?.trim().toLowerCase() ?? "";
+  const normalizedEmail = (input.customer?.email || input.clientEmail || "").trim().toLowerCase();
+  const customerPhone = input.customer?.phone?.trim() ?? "";
+  const wantsDelivery = Boolean(input.customer?.wantsDelivery);
+  const deliveryAddress = input.customer?.deliveryAddress?.trim() ?? "";
 
-  if (!normalizedEmail) {
+  if (!normalizedEmail || !normalizedEmail.includes("@")) {
     return {
       ok: false,
-      message: "Connexion client requise pour finaliser la commande.",
+      message: "Email client requis pour finaliser la commande.",
+      subtotal: 0,
+      discountAmount: 0,
+      finalPrice: 0,
+      appliedPromoCode: "",
+      ...getPublicStateShape(currentState),
+    };
+  }
+
+  if (!customerPhone) {
+    return {
+      ok: false,
+      message: "Numero de telephone requis pour finaliser la commande.",
+      subtotal: 0,
+      discountAmount: 0,
+      finalPrice: 0,
+      appliedPromoCode: "",
+      ...getPublicStateShape(currentState),
+    };
+  }
+
+  if (wantsDelivery && !deliveryAddress) {
+    return {
+      ok: false,
+      message: "Adresse de livraison requise.",
       subtotal: 0,
       discountAmount: 0,
       finalPrice: 0,
@@ -881,9 +912,18 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
       };
     }
   } else {
-    client = createClientFromEmail(normalizedEmail, dateLabel);
+    client = createClientFromEmail(normalizedEmail, dateLabel, {
+      phone: customerPhone,
+      city: deliveryAddress,
+      deliveryAddress,
+      wantsDelivery,
+    });
     currentState.clients.unshift(client);
   }
+  client.phone = customerPhone || client.phone;
+  client.city = deliveryAddress || client.city;
+  client.deliveryAddress = deliveryAddress || client.deliveryAddress;
+  client.wantsDelivery = wantsDelivery;
   client.totalSpent += finalPrice;
   client.completedOrders += 1;
   client.pendingCarts = 0;
@@ -894,12 +934,18 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     client.promoCodesUsed = Array.from(new Set([...client.promoCodesUsed, appliedPromoCode]));
   }
 
+  const orderId = `ord-${Date.now().toString(36)}`;
+
   currentState.orders.unshift({
-    id: `ord-${Date.now().toString(36)}`,
+    id: orderId,
     clientId: client.id,
     total: finalPrice,
     status: "completed",
     promoCode: appliedPromoCode || undefined,
+    customerEmail: normalizedEmail,
+    customerPhone,
+    deliveryAddress,
+    wantsDelivery,
     items: Array.from(quantityByProduct.entries()).map(([productId, quantity]) => ({
       productId,
       quantity,
@@ -937,6 +983,7 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     discountAmount,
     finalPrice,
     appliedPromoCode,
+    orderId,
     ...getPublicStateShape(currentState),
   };
 }

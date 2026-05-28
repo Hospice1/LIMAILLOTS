@@ -42,6 +42,13 @@ export interface CategoryItem {
   targetTag?: "new" | "promo";
 }
 
+
+export interface CheckoutCustomer {
+  email: string;
+  phone: string;
+  wantsDelivery: boolean;
+  deliveryAddress: string;
+}
 export interface CartItem {
   productId: string;
   quantity: number;

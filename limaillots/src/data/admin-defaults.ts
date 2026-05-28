@@ -175,6 +175,8 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
     notifications: Array.isArray(client.notifications)
       ? client.notifications
       : fallback.clients[index]?.notifications ?? [],
+    deliveryAddress: typeof client.deliveryAddress === "string" ? client.deliveryAddress : fallback.clients[index]?.deliveryAddress ?? "",
+    wantsDelivery: typeof client.wantsDelivery === "boolean" ? client.wantsDelivery : fallback.clients[index]?.wantsDelivery ?? false,
     reviews: normalizeClientReviews(client.reviews, fallback.clients[index]?.reviews ?? []),
   }));
 
@@ -206,6 +208,14 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
             typeof candidate.promoCode === "string" && candidate.promoCode.trim()
               ? candidate.promoCode.trim()
               : fallbackOrder?.promoCode,
+          customerEmail:
+            typeof candidate.customerEmail === "string" ? candidate.customerEmail : fallbackOrder?.customerEmail,
+          customerPhone:
+            typeof candidate.customerPhone === "string" ? candidate.customerPhone : fallbackOrder?.customerPhone,
+          deliveryAddress:
+            typeof candidate.deliveryAddress === "string" ? candidate.deliveryAddress : fallbackOrder?.deliveryAddress,
+          wantsDelivery:
+            typeof candidate.wantsDelivery === "boolean" ? candidate.wantsDelivery : fallbackOrder?.wantsDelivery,
           items: normalizeOrderItems(candidate.items, fallbackOrder?.items ?? []),
           createdAt:
             typeof candidate.createdAt === "string"

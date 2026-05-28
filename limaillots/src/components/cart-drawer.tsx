@@ -1,8 +1,8 @@
-﻿import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { CloseIcon, MinusIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { formatPrice } from "@/lib/store-utils";
-import { Product } from "@/types/store";
+import { CheckoutCustomer, Product } from "@/types/store";
 
 interface CartProduct {
   product: Product;
@@ -25,7 +25,7 @@ interface CartDrawerProps {
   onDecrement: (productId: string) => void;
   onRemove: (productId: string) => void;
   onApplyPromo: (code: string) => Promise<void>;
-  onCheckout: () => void;
+  onCheckout: (customer: CheckoutCustomer) => Promise<void>;
 }
 
 export function CartDrawer({
@@ -47,12 +47,53 @@ export function CartDrawer({
   onCheckout,
 }: CartDrawerProps) {
   const [promoInput, setPromoInput] = useState("");
+  const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [checkoutPhone, setCheckoutPhone] = useState("");
+  const [wantsDelivery, setWantsDelivery] = useState(true);
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [checkoutError, setCheckoutError] = useState("");
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   const copy = useMemo(() => getSiteCopy(language), [language]);
 
   async function handlePromoSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!promoInput.trim()) return;
     await onApplyPromo(promoInput);
+  }
+
+  async function handleCheckoutSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const email = checkoutEmail.trim().toLowerCase();
+    const phone = checkoutPhone.trim();
+    const address = deliveryAddress.trim();
+
+    if (!email || !email.includes("@")) {
+      setCheckoutError("Ajoute une adresse email valide.");
+      return;
+    }
+
+    if (!phone) {
+      setCheckoutError("Ajoute ton numero de telephone.");
+      return;
+    }
+
+    if (wantsDelivery && !address) {
+      setCheckoutError("Ajoute ton adresse de livraison ou desactive la livraison.");
+      return;
+    }
+
+    setCheckoutError("");
+    setIsCheckingOut(true);
+    try {
+      await onCheckout({
+        email,
+        phone,
+        wantsDelivery,
+        deliveryAddress: wantsDelivery ? address : "",
+      });
+    } finally {
+      setIsCheckingOut(false);
+    }
   }
 
   return (
@@ -195,14 +236,49 @@ export function CartDrawer({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onCheckout}
-              className="mt-4 w-full rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={items.length === 0}
-            >
-              {copy.cart.checkout}
-            </button>
+            <form className="mt-4 space-y-3" onSubmit={handleCheckoutSubmit}>
+              <div className="grid gap-2">
+                <input
+                  type="email"
+                  value={checkoutEmail}
+                  onChange={(event) => setCheckoutEmail(event.target.value)}
+                  placeholder="Email pour la commande"
+                  className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none"
+                />
+                <input
+                  value={checkoutPhone}
+                  onChange={(event) => setCheckoutPhone(event.target.value)}
+                  placeholder="Numero de telephone"
+                  className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text)] outline-none"
+                />
+                <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={wantsDelivery}
+                    onChange={() => setWantsDelivery((current) => !current)}
+                  />
+                  Je veux etre livre
+                </label>
+                {wantsDelivery ? (
+                  <textarea
+                    value={deliveryAddress}
+                    onChange={(event) => setDeliveryAddress(event.target.value)}
+                    placeholder="Adresse de livraison"
+                    className="min-h-20 rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none"
+                  />
+                ) : null}
+              </div>
+
+              {checkoutError ? <p className="text-xs text-red-500">{checkoutError}</p> : null}
+
+              <button
+                type="submit"
+                className="w-full rounded-full bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={items.length === 0 || isCheckingOut}
+              >
+                {isCheckingOut ? "Preparation..." : "Commander sur WhatsApp"}
+              </button>
+            </form>
           </div>
         </div>
       </aside>

@@ -28,6 +28,7 @@ import {
   writeCartToStorage,
   writeWishlistToStorage,
 } from "@/lib/client-storage";
+import { downloadOrderPdf, buildWhatsAppOrderUrl } from "@/lib/order-export";
 import { applyFilters } from "@/lib/store-utils";
 import {
   buildSearchFromFilters,
@@ -41,7 +42,7 @@ import {
   AdminOrder,
   AdminPromoCode,
 } from "@/types/admin";
-import { CartItem, Product, ProductFilters, ShopTheme } from "@/types/store";
+import { CartItem, CheckoutCustomer, Product, ProductFilters, ShopTheme } from "@/types/store";
 
 const CategoryGrid = dynamic(
   () =>
@@ -650,26 +651,18 @@ export default function Home() {
     }
   }
 
-  async function handleCheckout() {
+  async function handleCheckout(customer: CheckoutCustomer) {
     if (cartItems.length === 0) {
       return;
     }
 
+    const orderedItems = cartProducts.map(({ product, quantity }) => ({
+      name: product.name,
+      quantity,
+      unitPrice: product.price,
+    }));
+
     try {
-      const sessionResponse = await fetch("/api/client/session", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const sessionPayload = (await sessionResponse.json()) as {
-        authenticated?: boolean;
-      };
-      if (!sessionResponse.ok || !sessionPayload.authenticated) {
-        setPromoMessageText("Connecte-toi pour finaliser ta commande.");
-        router.push(`/compte/connexion?next=${encodeURIComponent(pathname)}`);
-        return;
-      }
-
       const response = await fetch("/api/store/checkout", {
         method: "POST",
         headers: {
@@ -679,12 +672,18 @@ export default function Home() {
           items: cartItems,
           wishlistIds,
           promoCode: activePromo?.code,
+          customer,
         }),
       });
 
       const payload = (await response.json()) as {
         ok: boolean;
         message: string;
+        orderId?: string;
+        subtotal?: number;
+        discountAmount?: number;
+        finalPrice?: number;
+        appliedPromoCode?: string;
         products: Product[];
         promoCodes: AdminPromoCode[];
       };
@@ -694,6 +693,19 @@ export default function Home() {
         await refreshStoreState();
         return;
       }
+
+      const orderExport = {
+        orderId: payload.orderId ?? `CMD-${Date.now().toString(36).toUpperCase()}`,
+        customer,
+        items: orderedItems,
+        subtotal: payload.subtotal ?? totalPrice,
+        discountAmount: payload.discountAmount ?? discountAmount,
+        finalPrice: payload.finalPrice ?? finalPrice,
+        promoCode: payload.appliedPromoCode || activePromo?.code,
+      };
+
+      downloadOrderPdf(orderExport);
+      window.open(buildWhatsAppOrderUrl(orderExport), "_blank", "noopener,noreferrer");
 
       if (Array.isArray(payload.products) && payload.products.length > 0) {
         setProducts(payload.products);
@@ -705,7 +717,7 @@ export default function Home() {
 
       setCartItems([]);
       setAppliedPromoCode("");
-      setPromoMessageText(payload.message || "Commande validee.");
+      setPromoMessageText(payload.message || "Commande envoyee sur WhatsApp.");
       setIsCartOpen(false);
     } catch {
       setPromoMessageText(

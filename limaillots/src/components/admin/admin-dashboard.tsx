@@ -1232,7 +1232,7 @@ export function AdminDashboard() {
                 value={passwordInput}
                 onChange={(event) => setPasswordInput(event.target.value)}
                 className="h-11 rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 text-[var(--text)] outline-none"
-                placeholder="LIMAILLOTS#2026"
+                placeholder="Mot de passe admin"
               />
             </label>
 
@@ -1245,10 +1245,6 @@ export function AdminDashboard() {
               Se connecter
             </button>
           </form>
-
-          <p className="mt-4 text-xs text-[var(--text-muted)]">
-            Mot de passe initial: <strong>LIMAILLOTS#2026</strong>
-          </p>
           <Link href="/" className="mt-3 inline-flex text-xs text-[var(--accent)]">
             Retour boutique
           </Link>
@@ -1963,6 +1959,8 @@ export function AdminDashboard() {
                           <div key={order.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs">
                             <p className="font-semibold text-[var(--text)]">{order.id}</p>
                             <p>{order.createdAt} - {formatPrice(order.total)} - {order.status}</p>
+                            <p>Contact: {order.customerPhone || selectedClient.phone || "Non renseigne"}</p>
+                            <p>Livraison: {order.wantsDelivery ? order.deliveryAddress || "Adresse non renseignee" : "Non / retrait"}</p>
                           </div>
                         ))}
                       </div>
