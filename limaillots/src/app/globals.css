@@ -49,7 +49,9 @@ body {
     var(--bg);
   color: var(--text);
   font-family: var(--font-body), "Segoe UI", sans-serif;
-  transition: background 300ms ease, color 300ms ease;
+  transition:
+    background 300ms ease,
+    color 300ms ease;
 }
 
 .font-hero {
@@ -57,7 +59,11 @@ body {
 }
 
 .hero-glow {
-  background: radial-gradient(circle at 30% 20%, var(--accent), transparent 70%);
+  background: radial-gradient(
+    circle at 30% 20%,
+    var(--accent),
+    transparent 70%
+  );
   filter: blur(24px);
   opacity: 0.3;
 }
@@ -102,4 +108,168 @@ body {
 .promo-marquee {
   animation: marquee-ltr 18s linear infinite;
   will-change: transform;
+}
+.home-entry {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.72),
+      rgba(255, 255, 255, 0.22)
+    ),
+    var(--bg);
+}
+
+:root[data-theme="dark"] .home-entry {
+  background:
+    linear-gradient(180deg, rgba(5, 7, 11, 0.82), rgba(5, 7, 11, 0.36)),
+    var(--bg);
+}
+
+.home-entry-fade-top {
+  background: linear-gradient(to bottom, var(--bg), transparent);
+}
+
+.home-entry-fade-bottom {
+  background: linear-gradient(to top, var(--bg), transparent);
+}
+
+@keyframes lab-ripple {
+  0% {
+    opacity: 0;
+    background-size: 0 0;
+    transform: scale(0.1);
+    mask-image: radial-gradient(
+      circle at center,
+      black 0%,
+      black 0%,
+      transparent 2%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(
+      circle at center,
+      black 0%,
+      black 0%,
+      transparent 2%,
+      transparent 100%
+    );
+  }
+
+  35% {
+    opacity: 1;
+    background-size: 16px 16px;
+    transform: scale(0.45);
+    mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      black 34%,
+      transparent 39%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      black 34%,
+      transparent 39%,
+      transparent 100%
+    );
+  }
+
+  70% {
+    transform: scale(0.8);
+    mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      transparent 50%,
+      black 70%,
+      transparent 76%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      transparent 50%,
+      black 70%,
+      transparent 76%,
+      transparent 100%
+    );
+  }
+
+  100% {
+    opacity: 0;
+    background-size: 0 0;
+    transform: scale(1);
+    mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      transparent 100%
+    );
+    -webkit-mask-image: radial-gradient(
+      circle at center,
+      transparent 0%,
+      transparent 100%
+    );
+  }
+}
+
+.lab-bg {
+  --mask-offset: 90px;
+  background-image: radial-gradient(
+    rgba(17, 24, 39, 0.11) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+  -webkit-mask:
+    linear-gradient(
+      to bottom,
+      transparent,
+      #fff var(--mask-offset) calc(100% - var(--mask-offset)),
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent,
+      #fff var(--mask-offset) calc(100% - var(--mask-offset)),
+      transparent
+    );
+  mask:
+    linear-gradient(
+      to bottom,
+      transparent,
+      #fff var(--mask-offset) calc(100% - var(--mask-offset)),
+      transparent
+    ),
+    linear-gradient(
+      to right,
+      transparent,
+      #fff var(--mask-offset) calc(100% - var(--mask-offset)),
+      transparent
+    );
+  -webkit-mask-composite: source-in, xor;
+  mask-composite: intersect;
+  transform: translateZ(0);
+}
+
+.lab-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    rgba(17, 24, 39, 0.16) 1px,
+    transparent 1px
+  );
+  animation: lab-ripple 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change:
+    transform,
+    mask-image,
+    -webkit-mask-image,
+    background-size,
+    opacity;
+}
+
+:root[data-theme="dark"] .lab-bg,
+:root[data-theme="dark"] .lab-bg::before {
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.14) 1px,
+    transparent 1px
+  );
 }

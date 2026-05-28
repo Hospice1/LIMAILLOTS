@@ -1,13 +1,16 @@
-﻿
-"use client";
+﻿"use client";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CartDrawer } from "@/components/cart-drawer";
 import { Footer } from "@/components/footer";
+import { HomeEntry } from "@/components/home-entry";
 import { HeroSection } from "@/components/hero-section";
-import { CustomerReviewsSection, type CustomerReviewEntry } from "@/components/customer-reviews-section";
+import {
+  CustomerReviewsSection,
+  type CustomerReviewEntry,
+} from "@/components/customer-reviews-section";
 import { NewArrivalsRail } from "@/components/new-arrivals-rail";
 import { MainNavbar } from "@/components/main-navbar";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -33,11 +36,17 @@ import {
   TagFilter,
 } from "@/lib/url-filters";
 import { detectPreferredLanguage, SiteLanguage } from "@/lib/i18n";
-import { AdminClient, AdminMarqueeSettings, AdminOrder, AdminPromoCode } from "@/types/admin";
+import {
+  AdminClient,
+  AdminMarqueeSettings,
+  AdminOrder,
+  AdminPromoCode,
+} from "@/types/admin";
 import { CartItem, Product, ProductFilters, ShopTheme } from "@/types/store";
 
 const CategoryGrid = dynamic(
-  () => import("@/components/category-grid").then((module) => module.CategoryGrid),
+  () =>
+    import("@/components/category-grid").then((module) => module.CategoryGrid),
   {
     loading: () => (
       <div className="mx-auto h-56 max-w-7xl animate-pulse rounded-3xl bg-[var(--surface)]" />
@@ -46,7 +55,10 @@ const CategoryGrid = dynamic(
 );
 
 const ProductSection = dynamic(
-  () => import("@/components/product-section").then((module) => module.ProductSection),
+  () =>
+    import("@/components/product-section").then(
+      (module) => module.ProductSection,
+    ),
   {
     loading: () => (
       <div className="mx-auto h-72 max-w-7xl animate-pulse rounded-3xl bg-[var(--surface)]" />
@@ -63,23 +75,28 @@ const defaultFilters: ProductFilters = {
   sortBy: "popular",
 };
 
-const fallbackPromoState: AdminPromoCode[] = fallbackPromoCodes.map((promo, index) => ({
-  id: `fallback-promo-${index + 1}`,
-  code: promo.code,
-  discountPercent: promo.discountPercent,
-  minSubtotal: promo.minSubtotal,
-  usageLimit: 9999,
-  usedCount: 0,
-  isActive: true,
-  createdAt: "2026-01-01",
-}));
+const fallbackPromoState: AdminPromoCode[] = fallbackPromoCodes.map(
+  (promo, index) => ({
+    id: `fallback-promo-${index + 1}`,
+    code: promo.code,
+    discountPercent: promo.discountPercent,
+    minSubtotal: promo.minSubtotal,
+    usageLimit: 9999,
+    usedCount: 0,
+    isActive: true,
+    createdAt: "2026-01-01",
+  }),
+);
 
 const fallbackMarquee: AdminMarqueeSettings = {
   promoCode: fallbackPromoState[0]?.code ?? "LIMAILL0T5",
   message: `10% OFF POUR TOUTES COMMANDES AVEC LE CODE PROMO "${fallbackPromoState[0]?.code ?? "LIMAILL0T5"}"`,
 };
 
-function getInitialFilterState(): { filters: ProductFilters; tagFilter: TagFilter } {
+function getInitialFilterState(): {
+  filters: ProductFilters;
+  tagFilter: TagFilter;
+} {
   if (typeof window === "undefined") {
     return { filters: defaultFilters, tagFilter: "all" };
   }
@@ -92,13 +109,22 @@ export default function Home() {
   const pathname = usePathname();
 
   const [initialFilterState] = useState(getInitialFilterState);
-  const [filters, setFilters] = useState<ProductFilters>(initialFilterState.filters);
-  const [tagFilter, setTagFilter] = useState<TagFilter>(initialFilterState.tagFilter);
+  const [filters, setFilters] = useState<ProductFilters>(
+    initialFilterState.filters,
+  );
+  const [tagFilter, setTagFilter] = useState<TagFilter>(
+    initialFilterState.tagFilter,
+  );
 
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
-  const [promoCodes, setPromoCodes] = useState<AdminPromoCode[]>(fallbackPromoState);
-  const [storeClients, setStoreClients] = useState<AdminClient[]>(() => createDefaultAdminStateData().clients);
-  const [orders, setOrders] = useState<AdminOrder[]>(() => createDefaultAdminStateData().orders);
+  const [promoCodes, setPromoCodes] =
+    useState<AdminPromoCode[]>(fallbackPromoState);
+  const [storeClients, setStoreClients] = useState<AdminClient[]>(
+    () => createDefaultAdminStateData().clients,
+  );
+  const [orders, setOrders] = useState<AdminOrder[]>(
+    () => createDefaultAdminStateData().orders,
+  );
   const [, setDatabaseBacked] = useState(false);
   const [, setStoreError] = useState("");
 
@@ -119,15 +145,23 @@ export default function Home() {
     }
 
     const storedLanguage = window.localStorage.getItem("limaillots-language");
-    if (storedLanguage === "fr" || storedLanguage === "en" || storedLanguage === "pt") {
+    if (
+      storedLanguage === "fr" ||
+      storedLanguage === "en" ||
+      storedLanguage === "pt"
+    ) {
       return storedLanguage;
     }
 
     return detectPreferredLanguage(window.navigator.language);
   });
 
-  const [cartItems, setCartItems] = useState<CartItem[]>(() => readCartFromStorage());
-  const [wishlistIds, setWishlistIds] = useState<string[]>(() => readWishlistFromStorage());
+  const [cartItems, setCartItems] = useState<CartItem[]>(() =>
+    readCartFromStorage(),
+  );
+  const [wishlistIds, setWishlistIds] = useState<string[]>(() =>
+    readWishlistFromStorage(),
+  );
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -168,15 +202,24 @@ export default function Home() {
         throw new Error("Impossible de charger la boutique.");
       }
 
-      if (Array.isArray(payload.data.products) && payload.data.products.length > 0) {
+      if (
+        Array.isArray(payload.data.products) &&
+        payload.data.products.length > 0
+      ) {
         setProducts(payload.data.products);
       }
 
-      if (Array.isArray(payload.data.promoCodes) && payload.data.promoCodes.length > 0) {
+      if (
+        Array.isArray(payload.data.promoCodes) &&
+        payload.data.promoCodes.length > 0
+      ) {
         setPromoCodes(payload.data.promoCodes);
       }
 
-      if (payload.data.marquee && typeof payload.data.marquee.message === "string") {
+      if (
+        payload.data.marquee &&
+        typeof payload.data.marquee.message === "string"
+      ) {
         setMarquee(payload.data.marquee);
       }
 
@@ -191,7 +234,9 @@ export default function Home() {
       setDatabaseBacked(Boolean(payload.databaseBacked));
       setStoreError("");
     } catch {
-      setStoreError("Mode hors base active: affichage des donnees de demonstration.");
+      setStoreError(
+        "Mode hors base active: affichage des donnees de demonstration.",
+      );
     }
   }, []);
   const categoryOptions = useMemo(
@@ -201,9 +246,9 @@ export default function Home() {
 
   const clubsOrCountries = useMemo(
     () =>
-      Array.from(new Set(products.map((product) => product.clubOrCountry))).sort(
-        (a, b) => a.localeCompare(b),
-      ),
+      Array.from(
+        new Set(products.map((product) => product.clubOrCountry)),
+      ).sort((a, b) => a.localeCompare(b)),
     [products],
   );
 
@@ -271,7 +316,9 @@ export default function Home() {
     () =>
       cartItems
         .map((item) => {
-          const product = products.find((candidate) => candidate.id === item.productId);
+          const product = products.find(
+            (candidate) => candidate.id === item.productId,
+          );
           if (!product) return null;
 
           const quantity = Math.min(item.quantity, Math.max(product.stock, 0));
@@ -279,7 +326,10 @@ export default function Home() {
 
           return { product, quantity };
         })
-        .filter((item): item is { product: Product; quantity: number } => item !== null),
+        .filter(
+          (item): item is { product: Product; quantity: number } =>
+            item !== null,
+        ),
     [cartItems, products],
   );
 
@@ -375,7 +425,10 @@ export default function Home() {
   useEffect(() => {
     writeCartToStorage(cartItems);
 
-    const pendingItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    const pendingItems = cartItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
     const syncTimeout = window.setTimeout(() => {
       void fetch("/api/client/cart/sync", {
         method: "POST",
@@ -462,7 +515,9 @@ export default function Home() {
     setFilters((previous) => ({ ...previous, category: "Tous" }));
   }
 
-  function handleHeroQuickCategorySelect(value: "Maillots" | "Crampons" | "Accessoires") {
+  function handleHeroQuickCategorySelect(
+    value: "Maillots" | "Crampons" | "Accessoires",
+  ) {
     const searchByType = {
       Maillots: "maillot",
       Crampons: "crampons",
@@ -473,7 +528,12 @@ export default function Home() {
     setFilters((previous) => ({
       ...previous,
       search: searchByType[value],
-      category: value === "Crampons" ? "Crampons" : value === "Accessoires" ? "Accessoires" : "Tous",
+      category:
+        value === "Crampons"
+          ? "Crampons"
+          : value === "Accessoires"
+            ? "Accessoires"
+            : "Tous",
       sortBy: value === "Maillots" ? "popular" : previous.sortBy,
     }));
     window.requestAnimationFrame(jumpToProducts);
@@ -544,7 +604,9 @@ export default function Home() {
 
   async function applyPromo(code: string) {
     if (totalPrice <= 0) {
-      setPromoMessageText("Ajoute au moins un produit avant d'appliquer un code.");
+      setPromoMessageText(
+        "Ajoute au moins un produit avant d'appliquer un code.",
+      );
       return;
     }
 
@@ -596,7 +658,9 @@ export default function Home() {
         cache: "no-store",
       });
 
-      const sessionPayload = (await sessionResponse.json()) as { authenticated?: boolean };
+      const sessionPayload = (await sessionResponse.json()) as {
+        authenticated?: boolean;
+      };
       if (!sessionResponse.ok || !sessionPayload.authenticated) {
         setPromoMessageText("Connecte-toi pour finaliser ta commande.");
         router.push(`/compte/connexion?next=${encodeURIComponent(pathname)}`);
@@ -641,9 +705,18 @@ export default function Home() {
       setPromoMessageText(payload.message || "Commande validee.");
       setIsCartOpen(false);
     } catch {
-      setPromoMessageText("Impossible de finaliser la commande pour le moment.");
+      setPromoMessageText(
+        "Impossible de finaliser la commande pour le moment.",
+      );
     }
   }
+  function jumpToBoutique() {
+    const section = document.getElementById("boutique");
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   function jumpToProducts() {
     const section = document.getElementById("products");
     if (section) {
@@ -653,139 +726,103 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
-      <PromoBanner message={marquee.message || fallbackMarquee.message} />
+      <HomeEntry onEnter={jumpToBoutique} />
 
-      <MainNavbar
-        cartCount={totalItems}
-        language={language}
-        onLanguageChange={setLanguage}
-        onMenuToggle={() => setIsMenuOpen((open) => !open)}
-        onCartToggle={() => setIsCartOpen((open) => !open)}
-      />
+      <div id="boutique">
+        <PromoBanner message={marquee.message || fallbackMarquee.message} />
 
-      <SearchFilters
-        filters={filters}
-        language={language}
-        categories={categoryOptions}
-        clubsOrCountries={clubsOrCountries}
-        sizes={sizes}
-        theme={theme}
-        resultCount={filteredProducts.length}
-        wishlistCount={wishlistIds.length}
-        onThemeToggle={() =>
-          setTheme((currentTheme) =>
-            currentTheme === "light" ? "dark" : "light",
-          )
-        }
-        onFiltersChange={updateFilters}
-      />
-
-      <main>
-        <HeroSection language={language} onCtaClick={jumpToProducts} onQuickCategorySelect={handleHeroQuickCategorySelect} />
-
-        <NewArrivalsRail
-          products={newArrivalProducts}
+        <MainNavbar
+          cartCount={totalItems}
           language={language}
-          wishlistIds={wishlistIds}
-          ratingByProductId={productRatingById}
-          onAddToCart={addToCart}
-          onToggleWishlist={toggleWishlist}
+          onLanguageChange={setLanguage}
+          onMenuToggle={() => setIsMenuOpen((open) => !open)}
+          onCartToggle={() => setIsCartOpen((open) => !open)}
         />
 
+        <SearchFilters
+          filters={filters}
+          language={language}
+          categories={categoryOptions}
+          clubsOrCountries={clubsOrCountries}
+          sizes={sizes}
+          theme={theme}
+          resultCount={filteredProducts.length}
+          wishlistCount={wishlistIds.length}
+          onThemeToggle={() =>
+            setTheme((currentTheme) =>
+              currentTheme === "light" ? "dark" : "light",
+            )
+          }
+          onFiltersChange={updateFilters}
+        />
 
+        <main>
+          <HeroSection
+            language={language}
+            onCtaClick={jumpToProducts}
+            onQuickCategorySelect={handleHeroQuickCategorySelect}
+          />
 
-        <CategoryGrid
+          <NewArrivalsRail
+            products={newArrivalProducts}
+            language={language}
+            wishlistIds={wishlistIds}
+            ratingByProductId={productRatingById}
+            onAddToCart={addToCart}
+            onToggleWishlist={toggleWishlist}
+          />
+
+          <CategoryGrid
+            items={categoryItems}
+            language={language}
+            activeLabel={activeCategoryLabel}
+            onSelect={handleCategorySelect}
+          />
+
+          <ProductSection
+            products={filteredProducts}
+            language={language}
+            wishlistIds={wishlistIds}
+            ratingByProductId={productRatingById}
+            onAddToCart={addToCart}
+            onToggleWishlist={toggleWishlist}
+          />
+
+          <CustomerReviewsSection
+            reviews={customerReviews}
+            onSubmitted={() => void refreshStoreState()}
+          />
+        </main>
+
+        <Footer language={language} />
+
+        <MobileMenu
+          open={isMenuOpen}
           items={categoryItems}
           language={language}
-          activeLabel={activeCategoryLabel}
-          onSelect={handleCategorySelect}
+          onClose={() => setIsMenuOpen(false)}
+          onCategorySelect={handleCategorySelect}
         />
 
-        <ProductSection
-          products={filteredProducts}
+        <CartDrawer
+          open={isCartOpen}
           language={language}
-          wishlistIds={wishlistIds}
-          ratingByProductId={productRatingById}
-          onAddToCart={addToCart}
-          onToggleWishlist={toggleWishlist}
+          items={cartProducts}
+          totalItems={totalItems}
+          totalPrice={totalPrice}
+          discountAmount={discountAmount}
+          finalPrice={finalPrice}
+          appliedPromoCode={activePromo?.code ?? ""}
+          promoMessage={promoMessageForDrawer}
+          isApplyingPromo={isApplyingPromo}
+          onClose={() => setIsCartOpen(false)}
+          onIncrement={incrementQuantity}
+          onDecrement={decrementQuantity}
+          onRemove={removeFromCart}
+          onApplyPromo={applyPromo}
+          onCheckout={handleCheckout}
         />
-
-        <CustomerReviewsSection
-          reviews={customerReviews}
-          onSubmitted={() => void refreshStoreState()}
-        />
-      </main>
-
-      <Footer language={language} />
-
-      <MobileMenu
-        open={isMenuOpen}
-        items={categoryItems}
-        language={language}
-        onClose={() => setIsMenuOpen(false)}
-        onCategorySelect={handleCategorySelect}
-      />
-
-      <CartDrawer
-        open={isCartOpen}
-        language={language}
-        items={cartProducts}
-        totalItems={totalItems}
-        totalPrice={totalPrice}
-        discountAmount={discountAmount}
-        finalPrice={finalPrice}
-        appliedPromoCode={activePromo?.code ?? ""}
-        promoMessage={promoMessageForDrawer}
-        isApplyingPromo={isApplyingPromo}
-        onClose={() => setIsCartOpen(false)}
-        onIncrement={incrementQuantity}
-        onDecrement={decrementQuantity}
-        onRemove={removeFromCart}
-        onApplyPromo={applyPromo}
-        onCheckout={handleCheckout}
-      />
+      </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
