@@ -1,4 +1,4 @@
-﻿import { LimaillotsLogo } from "@/components/limaillots-logo";
+import { LimaillotsLogo } from "@/components/limaillots-logo";
 import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 
 interface FooterProps {
@@ -17,7 +17,7 @@ export function Footer({ language }: FooterProps) {
         <div>
           <LimaillotsLogo className="h-10 w-[170px] text-[var(--text)]" />
           <p className="mt-3 max-w-sm text-sm text-[var(--text-muted)]">
-            {copy.footer.description}
+            LIMAILLOTS equipe les etudiants et fans de football avec des maillots, crampons et accessoires selectionnes. Une boutique rapide, claire et connectee a WhatsApp pour commander sans friction.
           </p>
         </div>
 
@@ -76,8 +76,13 @@ export function Footer({ language }: FooterProps) {
           </div>
         </div>
       </div>
+      <div className="mx-auto grid max-w-7xl gap-3 border-t border-[var(--border)] px-4 py-5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)] sm:px-6 md:grid-cols-4 lg:px-8">
+        {["Livraison disponible", "Support WhatsApp", "Produits verifies", "Packs etudiants"].map((item) => (
+          <span key={item} className="rounded-full border border-[var(--border)] px-3 py-2 text-center">{item}</span>
+        ))}
+      </div>
       <div className="border-t border-[var(--border)] py-4 text-center text-xs text-[var(--text-muted)]">
-        © {copy.footer.copyright}
+        {"\u00A9"} {copy.footer.copyright}
       </div>
     </footer>
   );

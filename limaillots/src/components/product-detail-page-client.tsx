@@ -1,7 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { StarIcon } from "@/components/icons";
 import { ProductDetailActions } from "@/components/product-detail-actions";
 import { ProductGallery } from "@/components/product-gallery";
 import { formatPrice } from "@/lib/store-utils";
@@ -118,6 +119,13 @@ export function ProductDetailPageClient({
             {product.clubOrCountry}
           </p>
           <h1 className="mt-2 text-3xl font-semibold text-[var(--text)]">{product.name}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-sm font-bold text-[var(--text)]">
+              <StarIcon className="h-4 w-4 text-amber-400" />
+              {(product.rating ?? 0).toFixed(1)}/5
+            </span>
+            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[var(--accent)]">Avis verifie apres moderation</span>
+          </div>
           <p className="mt-3 text-sm text-[var(--text-muted)] md:text-base">{product.description}</p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -147,6 +155,14 @@ export function ProductDetailPageClient({
             ))}
           </div>
 
+          <div className="mt-6 grid gap-2 sm:grid-cols-2">
+            {["Livraison ou retrait", "Confirmation WhatsApp", "Produit verifie", "Support taille"].map((item) => (
+              <div key={item} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[var(--text)]">
+                {item}
+              </div>
+            ))}
+          </div>
+
           <ul className="mt-6 space-y-2 text-sm text-[var(--text-muted)]">
             {product.details.map((detail) => (
               <li key={detail} className="flex items-start gap-2">
@@ -157,6 +173,14 @@ export function ProductDetailPageClient({
           </ul>
 
           <ProductDetailActions productId={product.id} stock={product.stock} />
+          <a
+            href={`https://wa.me/2290191326544?text=${encodeURIComponent(`Bonjour LIMAILLOTS, je veux des informations sur ${product.name}`)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex rounded-full border border-[var(--border)] px-6 py-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            Demander sur WhatsApp
+          </a>
         </div>
       </section>
 
@@ -181,4 +205,3 @@ export function ProductDetailPageClient({
     </main>
   );
 }
-

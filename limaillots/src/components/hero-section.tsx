@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import { ArrowRightIcon } from "@/components/icons";
@@ -25,6 +25,14 @@ export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: Her
         <p className="mt-5 max-w-xl text-base text-[var(--text-muted)] md:text-lg">
           {copy.hero.subtitle}
         </p>
+        <div className="mt-5 grid max-w-xl grid-cols-3 gap-2">
+          {["Nouveautes", "Top ventes", "WhatsApp 24H"].map((label) => (
+            <div key={label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--accent)]">LIMAILLOTS</p>
+              <p className="mt-1 text-xs font-bold text-[var(--text)]">{label}</p>
+            </div>
+          ))}
+        </div>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -75,7 +83,7 @@ export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: Her
           </div>
 
           <div className="mt-4 flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-3">
-            <span className="text-sm font-semibold text-[var(--text)]">{copy.hero.delivery}</span>
+            <span className="text-sm font-semibold text-[var(--text)]">Livraison / retrait / confirmation WhatsApp</span>
             <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--accent)]">
               24H
             </span>
@@ -113,4 +121,3 @@ function VisualTile({ className, imageSrc, label }: VisualTileProps) {
     </article>
   );
 }
-

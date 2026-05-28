@@ -940,7 +940,7 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     id: orderId,
     clientId: client.id,
     total: finalPrice,
-    status: "completed",
+    status: "new",
     promoCode: appliedPromoCode || undefined,
     customerEmail: normalizedEmail,
     customerPhone,
@@ -987,9 +987,3 @@ export async function processCheckout(input: CheckoutInput): Promise<CheckoutRes
     ...getPublicStateShape(currentState),
   };
 }
-
-
-
-
-
-

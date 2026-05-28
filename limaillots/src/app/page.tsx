@@ -4,6 +4,8 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CartDrawer } from "@/components/cart-drawer";
+import { ConversionSections } from "@/components/conversion-sections";
+import { FaqSection } from "@/components/faq-section";
 import { Footer } from "@/components/footer";
 import { HomeEntry } from "@/components/home-entry";
 import { HeroSection } from "@/components/hero-section";
@@ -16,6 +18,7 @@ import { MainNavbar } from "@/components/main-navbar";
 import { MobileMenu } from "@/components/mobile-menu";
 import { PromoBanner } from "@/components/promo-banner";
 import { SearchFilters } from "@/components/search-filters";
+import { TrustStrip } from "@/components/trust-strip";
 import {
   categoryItems,
   products as fallbackProducts,
@@ -28,7 +31,11 @@ import {
   writeCartToStorage,
   writeWishlistToStorage,
 } from "@/lib/client-storage";
-import { downloadOrderPdf, buildWhatsAppOrderUrl } from "@/lib/order-export";
+import {
+  buildWhatsAppOrderUrl,
+  downloadOrderPdf,
+  type OrderExportData,
+} from "@/lib/order-export";
 import { applyFilters } from "@/lib/store-utils";
 import {
   buildSearchFromFilters,
@@ -165,6 +172,7 @@ export default function Home() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasEnteredShop, setHasEnteredShop] = useState(false);
+  const [hasResolvedEntry, setHasResolvedEntry] = useState(false);
 
   const [appliedPromoCode, setAppliedPromoCode] = useState("");
   const [promoMessageText, setPromoMessageText] = useState("");
@@ -179,6 +187,9 @@ export default function Home() {
     [products],
   );
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [checkoutConfirmation, setCheckoutConfirmation] = useState<
+    { order: OrderExportData; whatsappUrl: string } | null
+  >(null);
 
   const refreshStoreState = useCallback(async () => {
     try {
@@ -405,6 +416,15 @@ export default function Home() {
     document.documentElement.setAttribute("data-theme", theme);
     localStorage.setItem("limaillots-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const entryTimer = window.setTimeout(() => {
+      setHasEnteredShop(window.localStorage.getItem("limaillots-intro-seen") === "true");
+      setHasResolvedEntry(true);
+    }, 0);
+
+    return () => window.clearTimeout(entryTimer);
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("lang", language);
@@ -694,7 +714,7 @@ export default function Home() {
         return;
       }
 
-      const orderExport = {
+      const orderExport: OrderExportData = {
         orderId: payload.orderId ?? `CMD-${Date.now().toString(36).toUpperCase()}`,
         customer,
         items: orderedItems,
@@ -726,6 +746,7 @@ export default function Home() {
     }
   }
   function enterBoutique() {
+    window.localStorage.setItem("limaillots-intro-seen", "true");
     setHasEnteredShop(true);
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -737,6 +758,12 @@ export default function Home() {
     if (section) {
       section.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  if (!hasResolvedEntry) {
+    return (
+      <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300" />
+    );
   }
 
   if (!hasEnteredShop) {
@@ -786,6 +813,8 @@ export default function Home() {
             onQuickCategorySelect={handleHeroQuickCategorySelect}
           />
 
+          <TrustStrip />
+
           <NewArrivalsRail
             products={newArrivalProducts}
             language={language}
@@ -811,10 +840,14 @@ export default function Home() {
             onToggleWishlist={toggleWishlist}
           />
 
+          <ConversionSections />
+
           <CustomerReviewsSection
             reviews={customerReviews}
             onSubmitted={() => void refreshStoreState()}
           />
+
+          <FaqSection />
         </main>
 
         <Footer language={language} />
@@ -845,6 +878,47 @@ export default function Home() {
           onApplyPromo={applyPromo}
           onCheckout={handleCheckout}
         />
+        {checkoutConfirmation ? (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4">
+            <article className="w-full max-w-md rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-6 text-center shadow-2xl">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[var(--accent)]">
+                Commande preparee
+              </p>
+              <h2 className="mt-3 text-2xl font-black text-[var(--text)]">
+                Bon telecharge, WhatsApp ouvert
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-muted)]">
+                Le bon de commande {checkoutConfirmation.order.orderId} a ete telecharge. Si WhatsApp ne s&apos;est pas ouvert automatiquement, utilise le bouton ci-dessous.
+              </p>
+              <div className="mt-5 flex flex-col gap-2">
+                <a
+                  href={checkoutConfirmation.whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-[var(--accent)] px-5 py-3 text-sm font-bold text-white"
+                >
+                  Ouvrir WhatsApp
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadOrderPdf(checkoutConfirmation.order);
+                  }}
+                  className="rounded-full border border-[var(--border)] px-5 py-3 text-sm font-bold text-[var(--text)]"
+                >
+                  Re-telecharger le bon
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCheckoutConfirmation(null)}
+                  className="text-sm font-semibold text-[var(--text-muted)]"
+                >
+                  Fermer
+                </button>
+              </div>
+            </article>
+          </div>
+        ) : null}
     </div>
   );
 }

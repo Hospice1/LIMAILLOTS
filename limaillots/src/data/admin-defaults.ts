@@ -87,6 +87,21 @@ function normalizeClientReviews(
   });
 }
 
+
+function normalizeOrderStatus(status: unknown): AdminStateData["orders"][number]["status"] {
+  if (
+    status === "new" ||
+    status === "confirmed" ||
+    status === "delivered" ||
+    status === "cancelled" ||
+    status === "pending" ||
+    status === "completed"
+  ) {
+    return status;
+  }
+
+  return "new";
+}
 function normalizeOrderItems(
   orderItems: unknown,
   fallbackItems: AdminStateData["orders"][number]["items"],
@@ -203,7 +218,7 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
             typeof candidate.total === "number" && Number.isFinite(candidate.total)
               ? Math.max(0, Math.floor(candidate.total))
               : fallbackOrder?.total ?? 0,
-          status: candidate.status === "pending" ? "pending" : "completed",
+          status: normalizeOrderStatus(candidate.status ?? fallbackOrder?.status),
           promoCode:
             typeof candidate.promoCode === "string" && candidate.promoCode.trim()
               ? candidate.promoCode.trim()

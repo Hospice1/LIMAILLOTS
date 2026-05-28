@@ -6,8 +6,9 @@ import Image from "next/image";
 import { ProductGallery } from "@/components/product-gallery";
 import { LimaillotsLogo } from "@/components/limaillots-logo";
 import { AdminReviewsPanel, type AdminReviewItem } from "@/components/admin/admin-reviews-panel";
+import { downloadOrderPdf, type OrderExportData } from "@/lib/order-export";
 import { formatPrice } from "@/lib/store-utils";
-import { AdminClient, AdminDatabase, AdminPromoCode, AdminSalesPoint, ReviewStatus } from "@/types/admin";
+import { AdminClient, AdminDatabase, AdminOrder, AdminOrderStatus, AdminPromoCode, AdminSalesPoint, ReviewStatus } from "@/types/admin";
 import { categoryItems } from "@/data/store-data";
 import { Product, ProductMediaItem } from "@/types/store";
 
@@ -55,6 +56,17 @@ const gradientPool = [
   "from-zinc-500 via-slate-600 to-zinc-800",
 ];
 
+
+const orderStatusLabels: Record<AdminOrderStatus, string> = {
+  new: "Nouvelle",
+  confirmed: "Confirmee",
+  delivered: "Livree",
+  cancelled: "Annulee",
+  completed: "Finalisee",
+  pending: "En attente",
+};
+
+const editableOrderStatuses: AdminOrderStatus[] = ["new", "confirmed", "delivered", "cancelled"];
 const tabs: Array<{ id: AdminTab; label: string }> = [
   { id: "overview", label: "Vue globale" },
   { id: "products", label: "Produits" },
@@ -265,8 +277,8 @@ function summarizeProductChange(before: Product, after: Product): string {
   if (before.visual !== after.visual) changes.push("visuel");
 
   return changes.length > 0
-    ? `Produit modifiÃ©: ${after.name} (${changes.join(", ")})`
-    : `Produit modifiÃ©: ${after.name}`;
+    ? `Produit modifie: ${after.name} (${changes.join(", ")})`
+    : `Produit modifie: ${after.name}`;
 }
 
 function buildProductPatchFromEditor(editor: ProductEditorState, current: Product): Partial<Product> {
@@ -662,7 +674,7 @@ export function AdminDashboard() {
       }
     }
 
-    void persist(nextDb, quiet ? undefined : "Produit modifiÃ©.");
+    void persist(nextDb, quiet ? undefined : "Produit modifie.");
   }
   function removeProduct(productId: string) {
     const current = db.products.find((product) => product.id === productId);
@@ -672,14 +684,14 @@ export function AdminDashboard() {
     };
 
     if (current) {
-      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprimÃ©: ${current.name}`), ...db.changeHistory];
+      nextDb.changeHistory = [createChangeHistoryItem(`Produit supprime: ${current.name}`), ...db.changeHistory];
     }
 
     if (productEditor?.productId === productId) {
       setProductEditor(null);
     }
 
-    void persist(nextDb, "Produit supprimÃ©.");
+    void persist(nextDb, "Produit supprime.");
   }
   function handleAddProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -729,7 +741,7 @@ export function AdminDashboard() {
       id,
       slug,
       name: newProduct.name.trim(),
-      description: newProduct.description.trim() || "Nouveau produit ajoutÃ© via admin.",
+      description: newProduct.description.trim() || "Nouveau produit ajoute via admin.",
       details: [
         "Produit configure depuis le dashboard admin",
         "Livraison campus disponible",
@@ -761,7 +773,7 @@ export function AdminDashboard() {
     };
 
     nextDb.changeHistory = [createChangeHistoryItem(`Produit ajoute: ${product.name}`), ...db.changeHistory];
-    void persist(nextDb, "Nouveau produit ajoutÃ©.");
+    void persist(nextDb, "Nouveau produit ajoute.");
     setNewProduct({
       name: "",
       category: "Internationaux",
@@ -837,6 +849,53 @@ export function AdminDashboard() {
     };
 
     void persist(nextDb, "Statut du code promo mis a jour.");
+  }
+
+
+  function updateOrderStatus(orderId: string, status: AdminOrderStatus) {
+    const order = db.orders.find((item) => item.id === orderId);
+    const nextDb: AdminDatabase = {
+      ...db,
+      orders: db.orders.map((item) =>
+        item.id === orderId ? { ...item, status } : item,
+      ),
+      changeHistory: [
+        createChangeHistoryItem(`Statut commande ${orderId}: ${orderStatusLabels[status]}`),
+        ...db.changeHistory,
+      ],
+    };
+
+    void persist(nextDb, order ? "Statut commande mis a jour." : undefined);
+  }
+
+  function exportOrderPdf(order: AdminOrder) {
+    const client = db.clients.find((item) => item.id === order.clientId) ?? selectedClient;
+    const items = order.items.map((item) => {
+      const product = db.products.find((candidate) => candidate.id === item.productId);
+
+      return {
+        name: product?.name ?? item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      };
+    });
+    const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+    const orderExport: OrderExportData = {
+      orderId: order.id,
+      customer: {
+        email: order.customerEmail ?? client?.email ?? "client@limaillots.local",
+        phone: order.customerPhone ?? client?.phone ?? "Non renseigne",
+        wantsDelivery: Boolean(order.wantsDelivery),
+        deliveryAddress: order.deliveryAddress ?? client?.deliveryAddress ?? "",
+      },
+      items,
+      subtotal,
+      discountAmount: Math.max(0, subtotal - order.total),
+      finalPrice: order.total,
+      promoCode: order.promoCode,
+    };
+
+    downloadOrderPdf(orderExport);
   }
 
   function updateReviewStatus(reviewId: string, status: ReviewStatus) {
@@ -1188,11 +1247,11 @@ export function AdminDashboard() {
       const payload = (await response.json()) as { ok?: boolean; message?: string };
 
       if (!response.ok || !payload.ok) {
-        setFeedback(payload.message ?? "RÃ©activation impossible.");
+        setFeedback(payload.message ?? "Reactivation impossible.");
         return;
       }
 
-      setFeedback(payload.message ?? "Compte client rÃ©activÃ©.");
+      setFeedback(payload.message ?? "Compte client reactive.");
       await loadDatabase();
     } catch {
       setFeedback("Reactivation client impossible pour le moment.");
@@ -1432,7 +1491,7 @@ export function AdminDashboard() {
                       {overviewSalesStats.peakPoint ? overviewSalesStats.peakPoint.period : "-"}
                     </p>
                     <p className="mt-2 text-sm text-[var(--text-muted)]">
-                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistrÃ©e"}
+                      {overviewSalesStats.peakPoint ? `${overviewSalesStats.peakPoint.orders} commandes` : "Aucune vente enregistree"}
                     </p>
                   </article>
                 </section>
@@ -1509,7 +1568,7 @@ export function AdminDashboard() {
                               ) : (
                                 <Image
                                   src={item.url}
-                                  alt={`AperÃ§u mÃ©dia ${index + 1}`}
+                                  alt={`Apercu media ${index + 1}`}
                                   width={180}
                                   height={180}
                                   unoptimized
@@ -1594,7 +1653,7 @@ export function AdminDashboard() {
                       <div className="mt-5 space-y-4">
                         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm text-[var(--text-muted)]">
                           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
-                            AperÃ§u rapide
+                            Apercu rapide
                           </p>
                           <p className="mt-2 text-base font-semibold text-[var(--text)]">
                             {selectedProduct.category} - {selectedProduct.clubOrCountry}
@@ -1611,7 +1670,7 @@ export function AdminDashboard() {
                             onChange={(value) => setProductEditor((prev) => prev ? { ...prev, name: value } : prev)}
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            CatÃ©gorie
+                            Categorie
                             <div className="flex gap-2">
                               <select
                                 value={productEditor.categoryMode}
@@ -1663,7 +1722,7 @@ export function AdminDashboard() {
                             }
                           />
                           <label className="flex flex-col gap-1 text-sm text-[var(--text-muted)]">
-                            MÃ©dias du produit
+                            Medias du produit
                             <input
                               type="file"
                               accept="image/*,video/*"
@@ -1671,7 +1730,7 @@ export function AdminDashboard() {
                               onChange={handleProductEditorFilesChange}
                               className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-sm text-[var(--text)] file:mr-4 file:rounded-full file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-xs file:font-semibold file:text-white"
                             />
-                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistrÃ©es automatiquement.</span>
+                            <span className="text-xs text-[var(--text-muted)]">Les modifications sont enregistrees automatiquement.</span>
                           </label>
                           {productEditor.media.length > 0 ? (
                             <div className="md:col-span-2 grid grid-cols-3 gap-3">
@@ -1682,7 +1741,7 @@ export function AdminDashboard() {
                                   ) : (
                                     <Image
                                       src={item.url}
-                                      alt={`AperÃ§u mÃ©dia ${index + 1}`}
+                                      alt={`Apercu media ${index + 1}`}
                                       width={180}
                                       height={180}
                                       unoptimized
@@ -1839,7 +1898,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrÃ©e.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistree.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -1904,7 +1963,7 @@ export function AdminDashboard() {
                           <td className="px-3 py-2 text-[var(--text-muted)]">{client.reviews.length}</td>
                           <td className="px-3 py-2">
                             <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${client.deletedAt ? "border-amber-300 bg-amber-50 text-amber-700" : "border-emerald-300 bg-emerald-50 text-emerald-700"}`}>
-                              {client.deletedAt ? (canReactivateClient(client) ? "SupprimÃ© - rÃ©activable" : "SupprimÃ© - bloquÃ©") : "Actif"}
+                              {client.deletedAt ? (canReactivateClient(client) ? "Supprime - reactivable" : "Supprime - bloque") : "Actif"}
                             </span>
                             {client.deletedAt ? (
                               <p className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -1939,7 +1998,7 @@ export function AdminDashboard() {
                             onClick={() => void reactivateSelectedClient()}
                             className="rounded-full border border-emerald-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.1em] text-emerald-600"
                           >
-                            RÃ©activer le compte
+                            Reactiver le compte
                           </button>
                         ) : (
                           <button
@@ -1958,9 +2017,32 @@ export function AdminDashboard() {
                         {selectedClientOrders.map((order) => (
                           <div key={order.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs">
                             <p className="font-semibold text-[var(--text)]">{order.id}</p>
-                            <p>{order.createdAt} - {formatPrice(order.total)} - {order.status}</p>
+                            <p>{order.createdAt} - {formatPrice(order.total)} - {orderStatusLabels[order.status]}</p>
                             <p>Contact: {order.customerPhone || selectedClient.phone || "Non renseigne"}</p>
                             <p>Livraison: {order.wantsDelivery ? order.deliveryAddress || "Adresse non renseignee" : "Non / retrait"}</p>
+                            <div className="mt-2 flex flex-wrap gap-1.5">
+                              {editableOrderStatuses.map((status) => (
+                                <button
+                                  key={`${order.id}-${status}`}
+                                  type="button"
+                                  onClick={() => updateOrderStatus(order.id, status)}
+                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] ${
+                                    order.status === status
+                                      ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                                      : "border-[var(--border)] text-[var(--text-muted)]"
+                                  }`}
+                                >
+                                  {orderStatusLabels[status]}
+                                </button>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => exportOrderPdf(order)}
+                                className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
+                              >
+                                Export PDF
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -2161,7 +2243,7 @@ export function AdminDashboard() {
                   <h2 className="text-xl font-semibold text-[var(--text)]">Historique modifications</h2>
                   <div className="mt-4 space-y-2">
                     {changeHistory.length === 0 ? (
-                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistrÃ©e.</p>
+                      <p className="text-sm text-[var(--text-muted)]">Aucune modification enregistree.</p>
                     ) : null}
                     {changeHistory.map((item) => (
                       <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-sm">
@@ -2335,22 +2417,3 @@ function canReactivateClient(client: AdminClient): boolean {
   const diffDays = (Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24);
   return diffDays <= 30;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

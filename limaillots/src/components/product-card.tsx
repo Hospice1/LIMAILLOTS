@@ -22,6 +22,7 @@ export function ProductCard({
   href,
 }: ProductCardProps) {
   const isOutOfStock = product.stock <= 0;
+  const isLowStock = product.stock > 0 && product.stock <= 3;
   const galleryClickCycles = !href;
 
   return (
@@ -34,13 +35,32 @@ export function ProductCard({
         />
       ) : null}
 
-      <ProductGallery
-        product={product}
-        compact
-        showThumbnails={false}
-        clickCycles={galleryClickCycles}
-        className="h-44 w-full"
-      />
+      <div className="relative">
+        <ProductGallery
+          product={product}
+          compact
+          showThumbnails={false}
+          clickCycles={galleryClickCycles}
+          className="h-44 w-full"
+        />
+        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
+          {product.isNew ? (
+            <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-900">
+              Nouveau
+            </span>
+          ) : null}
+          {product.isPromo ? (
+            <span className="rounded-full bg-red-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+              Promo
+            </span>
+          ) : null}
+          {product.popularity >= 80 ? (
+            <span className="rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-950">
+              Meilleure vente
+            </span>
+          ) : null}
+        </div>
+      </div>
 
       <div className="relative z-20 space-y-4 p-5">
         <div>
@@ -55,15 +75,38 @@ export function ProductCard({
             </Link>
           )}
           <p className="mt-1 text-sm text-[var(--text-muted)]">{product.description}</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {product.sizes.slice(0, 4).map((size) => (
+              <span
+                key={size}
+                className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] font-bold text-[var(--text-muted)]"
+              >
+                {size}
+              </span>
+            ))}
+            {product.sizes.length > 4 ? (
+              <span className="rounded-full border border-[var(--border)] px-2.5 py-1 text-[10px] font-bold text-[var(--text-muted)]">
+                +{product.sizes.length - 4}
+              </span>
+            ) : null}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
+            {isLowStock ? (
+              <span className="text-red-500">Plus que {product.stock}</span>
+            ) : (
+              <span className="text-[var(--accent)]">Livraison rapide</span>
+            )}
+            <span className="text-[var(--text-muted)]">Produit verifie</span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
           <p className="text-lg font-bold text-[var(--text)]">{formatPrice(product.price)}</p>
-          {product.oldPrice && (
+          {product.oldPrice && product.oldPrice > product.price ? (
             <p className="text-sm text-[var(--text-muted)] line-through">
               {formatPrice(product.oldPrice)}
             </p>
-          )}
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between gap-3">
@@ -85,6 +128,13 @@ export function ProductCard({
                 <HeartIcon className="h-4 w-4" />
               )}
             </button>
+
+            <Link
+              href={`/produit/${product.slug}`}
+              className="rounded-full border border-[var(--border)] px-3 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Details
+            </Link>
 
             <button
               type="button"

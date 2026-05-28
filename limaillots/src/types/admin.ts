@@ -68,11 +68,13 @@ export interface AdminSalesPoint {
   orders: number;
 }
 
+export type AdminOrderStatus = "new" | "confirmed" | "delivered" | "cancelled" | "completed" | "pending";
+
 export interface AdminOrder {
   id: string;
   clientId: string;
   total: number;
-  status: "completed" | "pending";
+  status: AdminOrderStatus;
   promoCode?: string;
   customerEmail?: string;
   customerPhone?: string;

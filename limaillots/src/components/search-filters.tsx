@@ -1,4 +1,7 @@
-﻿import { MoonIcon, SearchIcon, SunIcon } from "@/components/icons";
+"use client";
+
+import { useState } from "react";
+import { MoonIcon, SearchIcon, SunIcon } from "@/components/icons";
 import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 import { ProductFilters, ShopTheme } from "@/types/store";
 
@@ -28,6 +31,56 @@ export function SearchFilters({
   onFiltersChange,
 }: SearchFiltersProps) {
   const copy = getSiteCopy(language);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const filterControls = (
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
+      <SelectFilter
+        label={copy.search.labels.category}
+        value={filters.category}
+        onChange={(value) => onFiltersChange({ category: value })}
+        options={[{ label: copy.search.all, value: "Tous" }, ...categories.map((category) => ({ label: category, value: category }))]}
+      />
+      <SelectFilter
+        label={copy.search.labels.price}
+        value={filters.priceRange}
+        onChange={(value) => onFiltersChange({ priceRange: value })}
+        options={[
+          { label: copy.search.all, value: "Tous" },
+          { label: "<20000", value: "<20000" },
+          { label: "20000-40000", value: "20000-40000" },
+          { label: "40000-70000", value: "40000-70000" },
+          { label: ">70000", value: ">70000" },
+        ]}
+      />
+      <SelectFilter
+        label={copy.search.labels.size}
+        value={filters.size}
+        onChange={(value) => onFiltersChange({ size: value })}
+        options={[{ label: copy.search.allSizes, value: "Toutes" }, ...sizes.map((size) => ({ label: size, value: size }))]}
+      />
+      <SelectFilter
+        label={copy.search.labels.sort}
+        value={filters.sortBy}
+        onChange={(value) =>
+          onFiltersChange({
+            sortBy: value as ProductFilters["sortBy"],
+          })
+        }
+        options={[
+          { label: copy.search.sortOptions.popular, value: "popular" },
+          { label: copy.search.sortOptions.newest, value: "newest" },
+          { label: copy.search.sortOptions.priceAsc, value: "price-asc" },
+          { label: copy.search.sortOptions.priceDesc, value: "price-desc" },
+        ]}
+      />
+      <SelectFilter
+        label={copy.search.labels.clubCountry}
+        value={filters.clubOrCountry}
+        onChange={(value) => onFiltersChange({ clubOrCountry: value })}
+        options={[{ label: copy.search.all, value: "Tous" }, ...clubsOrCountries.map((entry) => ({ label: entry, value: entry }))]}
+      />
+    </div>
+  );
 
   return (
     <section className="border-b border-[var(--border)] bg-[var(--surface)]/90 py-4 backdrop-blur-lg">
@@ -46,6 +99,14 @@ export function SearchFilters({
 
           <button
             type="button"
+            onClick={() => setIsMobileFiltersOpen((open) => !open)}
+            className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-xs font-black uppercase tracking-[0.14em] text-[var(--text)] md:hidden"
+          >
+            Filtres
+          </button>
+
+          <button
+            type="button"
             onClick={onThemeToggle}
             className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] text-[var(--text)] transition hover:scale-[1.02]"
             aria-label={copy.search.themeAria}
@@ -58,53 +119,13 @@ export function SearchFilters({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-          <SelectFilter
-            label={copy.search.labels.category}
-            value={filters.category}
-            onChange={(value) => onFiltersChange({ category: value })}
-            options={[{ label: copy.search.all, value: "Tous" }, ...categories.map((category) => ({ label: category, value: category }))]}
-          />
-          <SelectFilter
-            label={copy.search.labels.price}
-            value={filters.priceRange}
-            onChange={(value) => onFiltersChange({ priceRange: value })}
-            options={[
-              { label: copy.search.all, value: "Tous" },
-              { label: "<20000", value: "<20000" },
-              { label: "20000-40000", value: "20000-40000" },
-              { label: "40000-70000", value: "40000-70000" },
-              { label: ">70000", value: ">70000" },
-            ]}
-          />
-          <SelectFilter
-            label={copy.search.labels.size}
-            value={filters.size}
-            onChange={(value) => onFiltersChange({ size: value })}
-            options={[{ label: copy.search.allSizes, value: "Toutes" }, ...sizes.map((size) => ({ label: size, value: size }))]}
-          />
-          <SelectFilter
-            label={copy.search.labels.sort}
-            value={filters.sortBy}
-            onChange={(value) =>
-              onFiltersChange({
-                sortBy: value as ProductFilters["sortBy"],
-              })
-            }
-            options={[
-              { label: copy.search.sortOptions.popular, value: "popular" },
-              { label: copy.search.sortOptions.newest, value: "newest" },
-              { label: copy.search.sortOptions.priceAsc, value: "price-asc" },
-              { label: copy.search.sortOptions.priceDesc, value: "price-desc" },
-            ]}
-          />
-          <SelectFilter
-            label={copy.search.labels.clubCountry}
-            value={filters.clubOrCountry}
-            onChange={(value) => onFiltersChange({ clubOrCountry: value })}
-            options={[{ label: copy.search.all, value: "Tous" }, ...clubsOrCountries.map((entry) => ({ label: entry, value: entry }))]}
-          />
-        </div>
+        <div className="hidden md:block">{filterControls}</div>
+
+        {isMobileFiltersOpen ? (
+          <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--card-shadow)] md:hidden">
+            {filterControls}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">
           <p>{resultCount} {copy.search.results}</p>
@@ -148,5 +169,3 @@ function SelectFilter({ label, value, options, onChange }: SelectFilterProps) {
     </label>
   );
 }
-
-

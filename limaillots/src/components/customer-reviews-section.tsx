@@ -186,6 +186,9 @@ export function CustomerReviewsSection({ reviews, onSubmitted }: CustomerReviews
                             className={`h-4 w-4 ${index < review.rating ? "text-amber-400" : "text-[var(--surface-muted)]"}`}
                           />
                         ))}
+                        <span className="ml-2 rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--accent)]">
+                          Avis verifie
+                        </span>
                       </div>
                     </div>
                   </div>
