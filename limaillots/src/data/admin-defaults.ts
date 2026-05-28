@@ -1,4 +1,5 @@
-﻿import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
+import { products as defaultProducts, promoCodes as basePromoCodes } from "@/data/store-data";
+import { Product } from "@/types/store";
 import {
   AdminClient,
   AdminMarqueeSettings,
@@ -25,6 +26,27 @@ function createDefaultMarqueeSettings(promoCodes: AdminPromoCode[]): AdminMarque
 
 function normalizeReviewStatus(status: unknown): "published" | "pending" | "removed" {
   return status === "published" || status === "removed" ? status : "pending";
+}
+function normalizeProductRating(value: unknown, fallback = 4.5): number {
+  const rating = Number(value);
+  const safeFallback = Number.isFinite(fallback) ? fallback : 4.5;
+  const resolved = Number.isFinite(rating) ? rating : safeFallback;
+  return Math.round(Math.min(5, Math.max(0, resolved)) * 10) / 10;
+}
+
+function normalizeProducts(input: unknown, fallbackProducts: Product[]): Product[] {
+  const source = Array.isArray(input) ? input : fallbackProducts;
+
+  return source.map((item, index) => {
+    const fallbackProduct = fallbackProducts[index];
+    const candidate = item as Partial<Product>;
+
+    return {
+      ...(fallbackProduct ?? {}),
+      ...candidate,
+      rating: normalizeProductRating(candidate.rating, fallbackProduct?.rating ?? 4.5),
+    } as Product;
+  });
 }
 
 function normalizeClientReviews(
@@ -142,9 +164,7 @@ export function normalizeAdminStateData(input: unknown): AdminStateData {
 
   const parsed = input as Partial<AdminStateData>;
 
-  const products = Array.isArray(parsed.products)
-    ? parsed.products
-    : fallback.products;
+  const products = normalizeProducts(parsed.products, fallback.products);
 
   const clientsRaw = Array.isArray(parsed.clients)
     ? parsed.clients

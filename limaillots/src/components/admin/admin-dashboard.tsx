@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
@@ -25,6 +25,7 @@ type ProductEditorState = {
   sizes: string;
   price: string;
   oldPrice: string;
+  rating: string;
   stock: string;
   media: ProductMediaItem[];
   visual: string;
@@ -41,6 +42,7 @@ type ProductFormState = {
   sizes: string;
   price: string;
   oldPrice: string;
+  rating: string;
   stock: string;
   media: ProductMediaItem[];
 };
@@ -144,6 +146,7 @@ function createEmptyProductEditorState(product?: Product | null): ProductEditorS
       sizes: "M,L,XL",
       price: "29990",
       oldPrice: "",
+      rating: "4.8",
       stock: "10",
       media: createEmptyMedia(),
       visual: "",
@@ -163,6 +166,7 @@ function createEmptyProductEditorState(product?: Product | null): ProductEditorS
     sizes: product.sizes.join(","),
     price: String(product.price),
     oldPrice: product.oldPrice ? String(product.oldPrice) : "",
+    rating: formatRatingForInput(product.rating),
     stock: String(product.stock),
     media: extractProductMedia(product),
     visual: product.visual,
@@ -174,6 +178,17 @@ function createEmptyProductEditorState(product?: Product | null): ProductEditorS
 function parseOptionalNumber(value: string): number | undefined {
   const normalized = Number(value);
   return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+}
+
+function normalizeProductRating(value: unknown, fallback = 4.5): number {
+  const rating = Number(value);
+  const safeFallback = Number.isFinite(fallback) ? fallback : 4.5;
+  const resolved = Number.isFinite(rating) ? rating : safeFallback;
+  return Math.round(Math.min(5, Math.max(0, resolved)) * 10) / 10;
+}
+
+function formatRatingForInput(value: unknown): string {
+  return normalizeProductRating(value, 4.5).toFixed(1);
 }
 
 function uploadFilesToBlob(files: File[], folder: string): Promise<ProductMediaItem[]> {
@@ -223,6 +238,7 @@ function hasProductChanges(editor: ProductEditorState, current: Product): boolea
     || (editor.clubOrCountry.trim() || current.clubOrCountry) !== current.clubOrCountry
     || (Number(editor.price) > 0 ? Number(editor.price) : current.price) !== current.price
     || (parseOptionalNumber(editor.oldPrice) ?? undefined) !== current.oldPrice
+    || normalizeProductRating(editor.rating, current.rating ?? 4.5) !== normalizeProductRating(current.rating, 4.5)
     || (Number(editor.stock) >= 0 ? Number(editor.stock) : current.stock) !== current.stock
     || editor.sizes.split(",").map((item) => item.trim()).filter(Boolean).join(",") !== current.sizes.join(",")
     || editor.visual.trim() !== current.visual
@@ -241,6 +257,7 @@ function summarizeProductChange(before: Product, after: Product): string {
   if (before.clubOrCountry !== after.clubOrCountry) changes.push("club/pays");
   if (before.price !== after.price) changes.push("prix");
   if (before.oldPrice !== after.oldPrice) changes.push("ancien prix");
+  if (before.rating !== after.rating) changes.push("note");
   if (before.stock !== after.stock) changes.push("stock");
   if (before.isPromo !== after.isPromo) changes.push("promo");
   if (before.isNew !== after.isNew) changes.push("nouveau");
@@ -262,6 +279,7 @@ function buildProductPatchFromEditor(editor: ProductEditorState, current: Produc
   const oldPrice = parseOptionalNumber(editor.oldPrice);
   const price = Number(editor.price);
   const stock = Number(editor.stock);
+  const rating = normalizeProductRating(editor.rating, current.rating ?? 4.5);
 
   return {
     name: editor.name.trim() || current.name,
@@ -270,6 +288,7 @@ function buildProductPatchFromEditor(editor: ProductEditorState, current: Produc
     clubOrCountry: editor.clubOrCountry.trim() || current.clubOrCountry,
     price: Number.isFinite(price) && price > 0 ? price : current.price,
     oldPrice,
+    rating,
     stock: Number.isFinite(stock) && stock >= 0 ? stock : current.stock,
     sizes: editor.sizes
       .split(",")
@@ -305,6 +324,7 @@ export function AdminDashboard() {
     sizes: "M,L,XL",
     price: "29990",
     oldPrice: "",
+    rating: "4.8",
     stock: "10",
     media: createEmptyMedia(),
   });
@@ -672,6 +692,7 @@ export function AdminDashboard() {
     const price = Number(newProduct.price);
     const oldPrice = Number(newProduct.oldPrice);
     const stock = Number(newProduct.stock);
+    const rating = normalizeProductRating(newProduct.rating, 4.8);
 
     if (!Number.isFinite(price) || price <= 0) {
       setFeedback("Prix invalide.");
@@ -718,6 +739,7 @@ export function AdminDashboard() {
       clubOrCountry: newProduct.clubOrCountry,
       price,
       oldPrice: Number.isFinite(oldPrice) && oldPrice > price ? oldPrice : undefined,
+      rating,
       popularity: 65,
       noveltyRank: Number(new Date().toISOString().slice(0, 10).replaceAll("-", "")),
       sizes: newProduct.sizes
@@ -749,6 +771,7 @@ export function AdminDashboard() {
       sizes: "M,L,XL",
       price: "29990",
       oldPrice: "",
+      rating: "4.8",
       stock: "10",
       media: createEmptyMedia(),
     });
@@ -1517,6 +1540,12 @@ export function AdminDashboard() {
                         onChange={(value) => setNewProduct((prev) => ({ ...prev, oldPrice: value }))}
                       />
                       <Input
+                        label="Note /5"
+                        type="number"
+                        value={newProduct.rating}
+                        onChange={(value) => setNewProduct((prev) => ({ ...prev, rating: value }))}
+                      />
+                      <Input
                         label="Stock"
                         value={newProduct.stock}
                         onChange={(value) => setNewProduct((prev) => ({ ...prev, stock: value }))}
@@ -1575,6 +1604,7 @@ export function AdminDashboard() {
                             {selectedProduct.category} - {selectedProduct.clubOrCountry}
                           </p>
                           <p className="mt-1">Prix actuel: {formatPrice(selectedProduct.price)}</p>
+                          <p>Note actuelle: {formatRatingForInput(selectedProduct.rating)}/5</p>
                           <p>Stock actuel: {selectedProduct.stock}</p>
                         </div>
 
@@ -1686,6 +1716,14 @@ export function AdminDashboard() {
                             value={productEditor.oldPrice}
                             onChange={(value) =>
                               setProductEditor((prev) => (prev ? { ...prev, oldPrice: value } : prev))
+                            }
+                          />
+                          <Input
+                            label="Note /5"
+                            type="number"
+                            value={productEditor.rating}
+                            onChange={(value) =>
+                              setProductEditor((prev) => (prev ? { ...prev, rating: value } : prev))
                             }
                           />
                           <Input

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,7 +29,6 @@ import {
   writeWishlistToStorage,
 } from "@/lib/client-storage";
 import { applyFilters } from "@/lib/store-utils";
-import { getProductRatingSummary } from "@/lib/product-metrics";
 import {
   buildSearchFromFilters,
   parseFilterStateFromSearch,
@@ -122,7 +121,7 @@ export default function Home() {
   const [storeClients, setStoreClients] = useState<AdminClient[]>(
     () => createDefaultAdminStateData().clients,
   );
-  const [orders, setOrders] = useState<AdminOrder[]>(
+  const [, setOrders] = useState<AdminOrder[]>(
     () => createDefaultAdminStateData().orders,
   );
   const [, setDatabaseBacked] = useState(false);
@@ -263,12 +262,15 @@ export default function Home() {
 
   const productRatingById = useMemo(() => {
     return Object.fromEntries(
-      products.map((product) => [
-        product.id,
-        getProductRatingSummary(product.id, storeClients, orders).rating,
-      ]),
+      products.map((product) => {
+        const rating = Number(product.rating ?? 0);
+        return [
+          product.id,
+          Number.isFinite(rating) ? Math.min(5, Math.max(0, rating)) : 0,
+        ];
+      }),
     ) as Record<string, number>;
-  }, [orders, products, storeClients]);
+  }, [products]);
 
   const customerReviews = useMemo<CustomerReviewEntry[]>(() => {
     return storeClients
