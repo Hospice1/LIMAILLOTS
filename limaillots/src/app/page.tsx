@@ -164,6 +164,7 @@ export default function Home() {
   );
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [hasEnteredShop, setHasEnteredShop] = useState(false);
 
   const [appliedPromoCode, setAppliedPromoCode] = useState("");
   const [promoMessageText, setPromoMessageText] = useState("");
@@ -710,11 +711,11 @@ export default function Home() {
       );
     }
   }
-  function jumpToBoutique() {
-    const section = document.getElementById("boutique");
-    if (section) {
-      section.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+  function enterBoutique() {
+    setHasEnteredShop(true);
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
 
   function jumpToProducts() {
@@ -724,11 +725,19 @@ export default function Home() {
     }
   }
 
-  return (
-    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
-      <HomeEntry onEnter={jumpToBoutique} />
+  if (!hasEnteredShop) {
+    return (
+      <div className="min-h-screen overflow-hidden bg-[var(--bg)] text-[var(--text)] transition-colors duration-300">
+        <HomeEntry onEnter={enterBoutique} />
+      </div>
+    );
+  }
 
-      <div id="boutique">
+  return (
+    <div
+      id="boutique"
+      className="min-h-screen bg-[var(--bg)] text-[var(--text)] transition-colors duration-300"
+    >
         <PromoBanner message={marquee.message || fallbackMarquee.message} />
 
         <MainNavbar
@@ -822,7 +831,6 @@ export default function Home() {
           onApplyPromo={applyPromo}
           onCheckout={handleCheckout}
         />
-      </div>
     </div>
   );
 }
