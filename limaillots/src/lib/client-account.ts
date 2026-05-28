@@ -1,4 +1,4 @@
-﻿export interface ClientProfileInput {
+export interface ClientProfileInput {
   fullName: string;
   email: string;
   phone: string;
@@ -90,4 +90,24 @@ export async function logoutClient(): Promise<void> {
   await fetch("/api/client/auth/logout", {
     method: "POST",
   });
+}
+
+export async function resetClientPassword(input: {
+  token: string;
+  password: string;
+}): Promise<{ ok: boolean; message: string }> {
+  const response = await fetch("/api/client/auth/reset", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+
+  const payload = (await response.json()) as ApiAuthResponse;
+
+  return {
+    ok: Boolean(response.ok && payload.ok),
+    message: payload.message ?? "Reinitialisation impossible.",
+  };
 }

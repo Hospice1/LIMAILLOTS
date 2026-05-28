@@ -1,4 +1,5 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { requestClientPasswordReset } from "@/lib/server/password-reset";
 
 interface RecoveryBody {
   email?: string;
@@ -6,7 +7,7 @@ interface RecoveryBody {
 
 export async function POST(request: Request) {
   const body = (await request.json()) as RecoveryBody;
-  const email = body.email?.trim();
+  const email = body.email?.trim() ?? "";
 
   if (!email) {
     return NextResponse.json(
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    ok: true,
-    message: "Demande de recuperation recue. Si le compte existe, un email sera envoye.",
-  });
+  const origin = request.headers.get("origin") ?? undefined;
+  const result = await requestClientPasswordReset({ email, requestOrigin: origin });
+
+  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }
