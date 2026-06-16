@@ -24,7 +24,7 @@ export function HomeEntry({ onEnter }: HomeEntryProps) {
         </h1>
 
         <p className="mt-5 max-w-2xl text-sm font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)] sm:text-base">
-          Maillots, crampons et accessoires premium pour etudiants fans de
+          Maillots Coupe du Monde et clubs premium pour etudiants fans de
           football
         </p>
 
@@ -38,11 +38,11 @@ export function HomeEntry({ onEnter }: HomeEntryProps) {
         </button>
 
         <div className="mt-10 flex w-full max-w-xl items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">
-          <span>Jerseys</span>
+          <span>World Cup</span>
           <span className="h-px flex-1 bg-[var(--border)]" />
-          <span>Boots</span>
+          <span>Clubs</span>
           <span className="h-px flex-1 bg-[var(--border)]" />
-          <span>Campus</span>
+          <span>WhatsApp</span>
         </div>
       </div>
     </section>

@@ -14,7 +14,7 @@ interface ProductSectionProps {
   onToggleWishlist: (productId: string) => void;
 }
 
-const INITIAL_VISIBLE_COUNT = 12;
+const INITIAL_VISIBLE_COUNT = 8;
 
 export function ProductSection({
   products,
@@ -34,7 +34,7 @@ export function ProductSection({
 
   return (
     <section id="products" className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
             {copy.products.kicker}
@@ -43,6 +43,9 @@ export function ProductSection({
             {copy.products.title}
           </h2>
         </div>
+        <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">
+          {products.length} maillots
+        </span>
       </div>
 
       {products.length === 0 ? (

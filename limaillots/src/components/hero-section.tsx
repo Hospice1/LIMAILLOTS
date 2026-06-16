@@ -7,31 +7,28 @@ import { SiteLanguage, getSiteCopy } from "@/lib/i18n";
 interface HeroSectionProps {
   language: SiteLanguage;
   onCtaClick: () => void;
-  onQuickCategorySelect: (value: "Maillots" | "Crampons" | "Accessoires") => void;
+  onQuickCategorySelect: (value: "world-cup" | "clubs") => void;
 }
 
 export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: HeroSectionProps) {
   const copy = getSiteCopy(language);
 
   return (
-    <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-8 pt-10 sm:px-6 md:grid-cols-2 md:items-center lg:px-8">
-      <div>
-        <p className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">
+    <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-8 pt-8 sm:px-6 md:grid-cols-[1.05fr_0.95fr] md:items-stretch lg:px-8">
+      <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--card-shadow)] md:p-8">
+        <p className="inline-flex rounded-full border border-[var(--accent)]/25 bg-[var(--accent)]/10 px-4 py-1 text-xs font-black uppercase tracking-[0.2em] text-[var(--accent)]">
           {copy.hero.badge}
         </p>
-        <h1 className="mt-5 text-4xl font-hero font-semibold leading-tight text-[var(--text)] md:text-5xl lg:text-6xl">
+        <h1 className="mt-5 max-w-3xl text-4xl font-hero font-black leading-[0.95] text-[var(--text)] md:text-6xl lg:text-7xl">
           {copy.hero.title}
         </h1>
         <p className="mt-5 max-w-xl text-base text-[var(--text-muted)] md:text-lg">
           {copy.hero.subtitle}
         </p>
-        <div className="mt-5 grid max-w-xl grid-cols-3 gap-2">
-          {["Nouveautes", "Top ventes", "WhatsApp 24H"].map((label) => (
-            <div key={label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] px-3 py-3 text-center">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--accent)]">LIMAILLOTS</p>
-              <p className="mt-1 text-xs font-bold text-[var(--text)]">{label}</p>
-            </div>
-          ))}
+        <div className="mt-6 grid max-w-xl grid-cols-3 gap-2 text-center">
+          <Metric value="2" label="univers" />
+          <Metric value="24H" label="WhatsApp" />
+          <Metric value="100%" label="maillots" />
         </div>
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <button
@@ -44,9 +41,8 @@ export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: Her
           </button>
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "Maillots" as const, label: copy.hero.quick.maillots },
-              { value: "Crampons" as const, label: copy.hero.quick.crampons },
-              { value: "Accessoires" as const, label: copy.hero.quick.accessoires },
+              { value: "world-cup" as const, label: copy.hero.quick.worldCup },
+              { value: "clubs" as const, label: copy.hero.quick.clubs },
             ].map((item) => (
               <button
                 key={item.value}
@@ -63,22 +59,22 @@ export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: Her
 
       <div className="relative">
         <div className="hero-glow absolute -inset-2 -z-10 rounded-[2.5rem]" />
-        <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--card-shadow)] md:p-8">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="relative h-full overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-4 shadow-[var(--card-shadow)] md:p-5">
+          <div className="grid h-full grid-cols-2 gap-3">
             <VisualTile
-              className="col-span-2 h-44 md:h-52"
+              className="col-span-2 h-56 md:h-72"
               imageSrc="/hero-boutique/maillots.jpg"
-              label={copy.hero.quick.maillots}
+              label={copy.hero.quick.worldCup}
             />
             <VisualTile
-              className="h-36 md:h-40"
-              imageSrc="/hero-boutique/crampons.jpg"
-              label={copy.hero.quick.crampons}
+              className="h-36 md:h-44"
+              imageSrc="/explore-collections/clubs.jpg"
+              label={copy.hero.quick.clubs}
             />
             <VisualTile
-              className="h-36 md:h-40"
-              imageSrc="/hero-boutique/accessoires.jpg"
-              label={copy.hero.quick.accessoires}
+              className="h-36 md:h-44"
+              imageSrc="/explore-collections/internationaux.jpg"
+              label="World Cup"
             />
           </div>
 
@@ -94,6 +90,15 @@ export function HeroSection({ language, onCtaClick, onQuickCategorySelect }: Her
         </div>
       </div>
     </section>
+  );
+}
+
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-3">
+      <p className="text-lg font-black text-[var(--text)]">{value}</p>
+      <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
+    </div>
   );
 }
 

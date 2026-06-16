@@ -4,15 +4,9 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CartDrawer } from "@/components/cart-drawer";
-import { ConversionSections } from "@/components/conversion-sections";
-import { FaqSection } from "@/components/faq-section";
 import { Footer } from "@/components/footer";
 import { HomeEntry } from "@/components/home-entry";
 import { HeroSection } from "@/components/hero-section";
-import {
-  CustomerReviewsSection,
-  type CustomerReviewEntry,
-} from "@/components/customer-reviews-section";
 import { NewArrivalsRail } from "@/components/new-arrivals-rail";
 import { MainNavbar } from "@/components/main-navbar";
 import { MobileMenu } from "@/components/mobile-menu";
@@ -44,12 +38,11 @@ import {
 } from "@/lib/url-filters";
 import { detectPreferredLanguage, SiteLanguage } from "@/lib/i18n";
 import {
-  AdminClient,
   AdminMarqueeSettings,
   AdminOrder,
   AdminPromoCode,
 } from "@/types/admin";
-import { CartItem, CheckoutCustomer, Product, ProductFilters, ShopTheme } from "@/types/store";
+import { CartItem, CategoryItem, CheckoutCustomer, Product, ProductFilters, ShopTheme } from "@/types/store";
 
 const CategoryGrid = dynamic(
   () =>
@@ -81,6 +74,41 @@ const defaultFilters: ProductFilters = {
   clubOrCountry: "Tous",
   sortBy: "popular",
 };
+
+type StoreFocus = "all" | "world-cup" | "clubs";
+
+const clubCategories = new Set([
+  "Clubs de LaLiga",
+  "Premier League",
+  "Ligue 1",
+  "Serie A",
+  "Bundesliga",
+  "Liga Portugal",
+]);
+
+function isWorldCupProduct(product: Product) {
+  return product.category === "Internationaux";
+}
+
+function isClubProduct(product: Product) {
+  return clubCategories.has(product.category);
+}
+
+function isFeaturedJersey(product: Product) {
+  return isWorldCupProduct(product) || isClubProduct(product);
+}
+
+function getFocusLabel(focus: StoreFocus) {
+  if (focus === "world-cup") return "Coupe du Monde";
+  if (focus === "clubs") return "Clubs";
+  return "Coupe du Monde & Clubs";
+}
+
+function categoryFocus(category: string): StoreFocus {
+  if (category === "Internationaux") return "world-cup";
+  if (clubCategories.has(category)) return "clubs";
+  return "all";
+}
 
 const fallbackPromoState: AdminPromoCode[] = fallbackPromoCodes.map(
   (promo, index) => ({
@@ -126,9 +154,6 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>(fallbackProducts);
   const [promoCodes, setPromoCodes] =
     useState<AdminPromoCode[]>(fallbackPromoState);
-  const [storeClients, setStoreClients] = useState<AdminClient[]>(
-    () => createDefaultAdminStateData().clients,
-  );
   const [, setOrders] = useState<AdminOrder[]>(
     () => createDefaultAdminStateData().orders,
   );
@@ -171,6 +196,7 @@ export default function Home() {
   );
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [storeFocus, setStoreFocus] = useState<StoreFocus>("all");
   const [hasEnteredShop, setHasEnteredShop] = useState(false);
   const [hasResolvedEntry, setHasResolvedEntry] = useState(false);
 
@@ -178,14 +204,6 @@ export default function Home() {
   const [promoMessageText, setPromoMessageText] = useState("");
   const [marquee, setMarquee] = useState<AdminMarqueeSettings>(fallbackMarquee);
 
-  const newArrivalProducts = useMemo(
-    () =>
-      [...products]
-        .filter((product) => product.isNew)
-        .sort((a, b) => b.noveltyRank - a.noveltyRank)
-        .slice(0, 8),
-    [products],
-  );
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [checkoutConfirmation, setCheckoutConfirmation] = useState<
     { order: OrderExportData; whatsappUrl: string } | null
@@ -204,7 +222,6 @@ export default function Home() {
           products?: Product[];
           promoCodes?: AdminPromoCode[];
           marquee?: AdminMarqueeSettings;
-          clients?: AdminClient[];
           orders?: AdminOrder[];
         };
         databaseBacked?: boolean;
@@ -235,10 +252,6 @@ export default function Home() {
         setMarquee(payload.data.marquee);
       }
 
-      if (Array.isArray(payload.data.clients)) {
-        setStoreClients(payload.data.clients);
-      }
-
       if (Array.isArray(payload.data.orders)) {
         setOrders(payload.data.orders);
       }
@@ -251,25 +264,71 @@ export default function Home() {
       );
     }
   }, []);
-  const categoryOptions = useMemo(
-    () => Array.from(new Set(products.map((product) => product.category))),
+  const featuredProducts = useMemo(
+    () => products.filter(isFeaturedJersey),
     [products],
+  );
+
+  const focusedProducts = useMemo(() => {
+    if (storeFocus === "world-cup") return featuredProducts.filter(isWorldCupProduct);
+    if (storeFocus === "clubs") return featuredProducts.filter(isClubProduct);
+    return featuredProducts;
+  }, [featuredProducts, storeFocus]);
+
+  const newArrivalProducts = useMemo(
+    () =>
+      [...featuredProducts]
+        .filter((product) => product.isNew || isWorldCupProduct(product))
+        .sort((a, b) => {
+          const worldCupPriority = Number(isWorldCupProduct(b)) - Number(isWorldCupProduct(a));
+          if (worldCupPriority !== 0) return worldCupPriority;
+          return b.noveltyRank - a.noveltyRank;
+        })
+        .slice(0, 8),
+    [featuredProducts],
+  );
+
+  const focusedCategoryItems = useMemo<CategoryItem[]>(() => {
+    const allowedIds = new Set([
+      "internationaux",
+      "clubs",
+      "laliga",
+      "premierleague",
+      "ligue1",
+      "seriea",
+      "bundesliga",
+    ]);
+
+    return categoryItems
+      .filter((item) => allowedIds.has(item.id))
+      .map((item) =>
+        item.id === "internationaux"
+          ? { ...item, label: "Coupe du Monde" }
+          : item.id === "clubs"
+            ? { ...item, label: "Clubs", targetCategory: undefined }
+            : item,
+      );
+  }, []);
+
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(featuredProducts.map((product) => product.category))),
+    [featuredProducts],
   );
 
   const clubsOrCountries = useMemo(
     () =>
       Array.from(
-        new Set(products.map((product) => product.clubOrCountry)),
+        new Set(featuredProducts.map((product) => product.clubOrCountry)),
       ).sort((a, b) => a.localeCompare(b)),
-    [products],
+    [featuredProducts],
   );
 
   const sizes = useMemo(
     () =>
-      Array.from(new Set(products.flatMap((product) => product.sizes))).sort(
+      Array.from(new Set(featuredProducts.flatMap((product) => product.sizes))).sort(
         (a, b) => a.localeCompare(b, "fr", { numeric: true }),
       ),
-    [products],
+    [featuredProducts],
   );
 
   const productRatingById = useMemo(() => {
@@ -284,27 +343,8 @@ export default function Home() {
     ) as Record<string, number>;
   }, [products]);
 
-  const customerReviews = useMemo<CustomerReviewEntry[]>(() => {
-    return storeClients
-      .flatMap((client) =>
-        client.reviews
-          .filter((review) => review.status === "published")
-          .map((review) => ({
-            id: review.id,
-            author: client.fullName,
-            city: client.city || "Client LIMAILLOTS",
-            rating: review.rating,
-            comment: review.comment,
-            photos: review.photos,
-            createdAt: review.createdAt,
-          })),
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 6);
-  }, [storeClients]);
-
   const filteredProducts = useMemo(() => {
-    const baseProducts = applyFilters(products, filters);
+    const baseProducts = applyFilters(focusedProducts, filters);
 
     if (tagFilter === "new") {
       return baseProducts.filter((product) => product.isNew);
@@ -315,17 +355,18 @@ export default function Home() {
     }
 
     return baseProducts;
-  }, [filters, products, tagFilter]);
+  }, [filters, focusedProducts, tagFilter]);
 
   const activeCategoryLabel = useMemo(() => {
     if (filters.category !== "Tous") {
+      if (filters.category === "Internationaux") return "Coupe du Monde";
       return filters.category;
     }
 
     if (tagFilter === "new") return "Nouveautes";
     if (tagFilter === "promo") return "Promotions";
-    return "Tous";
-  }, [filters.category, tagFilter]);
+    return getFocusLabel(storeFocus);
+  }, [filters.category, storeFocus, tagFilter]);
 
   const cartProducts = useMemo(
     () =>
@@ -507,12 +548,27 @@ export default function Home() {
 
     if (update.category && update.category !== "Tous") {
       setTagFilter("all");
+      setStoreFocus(categoryFocus(update.category));
+      return;
+    }
+
+    if (update.category === "Tous") {
+      setStoreFocus("all");
     }
   }
 
-  function handleCategorySelect(item: (typeof categoryItems)[number]) {
+  function handleCategorySelect(item: CategoryItem) {
+    if (item.id === "clubs") {
+      setStoreFocus("clubs");
+      setTagFilter("all");
+      setFilters((previous) => ({ ...previous, category: "Tous", search: "", sortBy: "popular" }));
+      window.requestAnimationFrame(jumpToProducts);
+      return;
+    }
+
     const targetCategory = item.targetCategory;
     if (targetCategory) {
+      setStoreFocus(categoryFocus(targetCategory));
       setTagFilter("all");
       setFilters((previous) => ({ ...previous, category: targetCategory }));
       window.requestAnimationFrame(jumpToProducts);
@@ -525,6 +581,7 @@ export default function Home() {
     }
 
     setTagFilter(targetTag);
+    setStoreFocus("all");
     window.requestAnimationFrame(jumpToProducts);
 
     if (targetTag === "new") {
@@ -540,25 +597,15 @@ export default function Home() {
   }
 
   function handleHeroQuickCategorySelect(
-    value: "Maillots" | "Crampons" | "Accessoires",
+    value: "world-cup" | "clubs",
   ) {
-    const searchByType = {
-      Maillots: "maillot",
-      Crampons: "crampons",
-      Accessoires: "accessoires",
-    } as const;
-
     setTagFilter("all");
+    setStoreFocus(value);
     setFilters((previous) => ({
       ...previous,
-      search: searchByType[value],
-      category:
-        value === "Crampons"
-          ? "Crampons"
-          : value === "Accessoires"
-            ? "Accessoires"
-            : "Tous",
-      sortBy: value === "Maillots" ? "popular" : previous.sortBy,
+      search: "",
+      category: value === "world-cup" ? "Internationaux" : "Tous",
+      sortBy: "popular",
     }));
     window.requestAnimationFrame(jumpToProducts);
   }
@@ -725,7 +772,9 @@ export default function Home() {
       };
 
       downloadOrderPdf(orderExport);
-      window.open(buildWhatsAppOrderUrl(orderExport), "_blank", "noopener,noreferrer");
+      const whatsappUrl = buildWhatsAppOrderUrl(orderExport);
+      window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      setCheckoutConfirmation({ order: orderExport, whatsappUrl });
 
       if (Array.isArray(payload.products) && payload.products.length > 0) {
         setProducts(payload.products);
@@ -825,7 +874,7 @@ export default function Home() {
           />
 
           <CategoryGrid
-            items={categoryItems}
+            items={focusedCategoryItems}
             language={language}
             activeLabel={activeCategoryLabel}
             onSelect={handleCategorySelect}
@@ -839,22 +888,13 @@ export default function Home() {
             onAddToCart={addToCart}
             onToggleWishlist={toggleWishlist}
           />
-
-          <ConversionSections />
-
-          <CustomerReviewsSection
-            reviews={customerReviews}
-            onSubmitted={() => void refreshStoreState()}
-          />
-
-          <FaqSection />
         </main>
 
         <Footer language={language} />
 
         <MobileMenu
           open={isMenuOpen}
-          items={categoryItems}
+          items={focusedCategoryItems}
           language={language}
           onClose={() => setIsMenuOpen(false)}
           onCategorySelect={handleCategorySelect}

@@ -10,7 +10,7 @@ export function TrustStrip() {
     },
     {
       title: "Produits verifies",
-      text: "Maillots, crampons et accessoires controles avant validation.",
+      text: "Maillots Coupe du Monde et clubs controles avant validation.",
     },
     {
       title: "Support rapide",

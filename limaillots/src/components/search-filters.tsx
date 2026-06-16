@@ -100,7 +100,7 @@ export function SearchFilters({
           <button
             type="button"
             onClick={() => setIsMobileFiltersOpen((open) => !open)}
-            className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-xs font-black uppercase tracking-[0.14em] text-[var(--text)] md:hidden"
+            className="inline-flex h-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-4 text-xs font-black uppercase tracking-[0.14em] text-[var(--text)]"
           >
             Filtres
           </button>
@@ -119,10 +119,8 @@ export function SearchFilters({
           </button>
         </div>
 
-        <div className="hidden md:block">{filterControls}</div>
-
         {isMobileFiltersOpen ? (
-          <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--card-shadow)] md:hidden">
+          <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--card-shadow)]">
             {filterControls}
           </div>
         ) : null}

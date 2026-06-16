@@ -37,9 +37,8 @@ export interface SiteCopy {
     cta: string;
     delivery: string;
     quick: {
-      maillots: string;
-      crampons: string;
-      accessoires: string;
+      worldCup: string;
+      clubs: string;
     };
   };
   categories: {
@@ -106,7 +105,7 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       languageName: { fr: "Francais", en: "Anglais", pt: "Portugais" },
     },
     search: {
-      placeholder: "Rechercher maillot, crampons, accessoire...",
+      placeholder: "Rechercher France, Maroc, Real Madrid, Arsenal...",
       labels: {
         category: "Categorie",
         price: "Prix",
@@ -127,31 +126,30 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       themeAria: "Basculer entre mode clair et mode sombre",
     },
     hero: {
-      badge: "Boutique football premium",
-      title: "LIMAILLOTS, la nouvelle base des etudiants fans de foot.",
-      subtitle: "Maillots iconiques, crampons performants et accessoires utiles au quotidien.",
-      cta: "Acheter maintenant",
+      badge: "Coupe du Monde maintenant",
+      title: "Les maillots qui comptent: nations et clubs.",
+      subtitle: "Une selection plus courte, plus premium: maillots Coupe du Monde et clubs forts, prets a commander sur WhatsApp.",
+      cta: "Voir les maillots",
       delivery: "Livraison Campus Express",
       quick: {
-        maillots: "Maillots",
-        crampons: "Crampons",
-        accessoires: "Accessoires",
+        worldCup: "Coupe du Monde",
+        clubs: "Clubs",
       },
     },
     categories: {
-      kicker: "Navigation rapide",
-      title: "Explore les collections",
+      kicker: "Selection claire",
+      title: "Coupe du Monde & Clubs",
       activeFilter: "Filtre actif",
       active: "Actif",
       view: "Voir",
     },
     arrivals: {
-      title: "Nouveautes en mouvement",
-      cta: "Voir la boutique",
+      title: "Maillots Coupe du Monde en avant",
+      cta: "Voir les maillots",
     },
     products: {
-      kicker: "Boutique",
-      title: "Produits recommandes",
+      kicker: "Boutique allegee",
+      title: "Maillots Coupe du Monde & Clubs",
       emptyTitle: "Aucun produit ne correspond a ces filtres.",
       emptySubtitle: "Modifie les filtres pour afficher davantage d'articles.",
       more: "Voir plus",
@@ -200,7 +198,7 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       languageName: { fr: "French", en: "English", pt: "Portuguese" },
     },
     search: {
-      placeholder: "Search jersey, boots, accessory...",
+      placeholder: "Search France, Morocco, Real Madrid, Arsenal...",
       labels: {
         category: "Category",
         price: "Price",
@@ -221,31 +219,30 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       themeAria: "Toggle light and dark mode",
     },
     hero: {
-      badge: "Premium football shop",
-      title: "LIMAILLOTS, the new home for football-loving students.",
-      subtitle: "Iconic jerseys, performance boots and daily accessories.",
-      cta: "Shop now",
+      badge: "World Cup season",
+      title: "The jerseys that matter: nations and clubs.",
+      subtitle: "A shorter, more premium selection: World Cup jerseys and strong clubs, ready to order on WhatsApp.",
+      cta: "View jerseys",
       delivery: "Campus Express Delivery",
       quick: {
-        maillots: "Jerseys",
-        crampons: "Boots",
-        accessoires: "Accessories",
+        worldCup: "World Cup",
+        clubs: "Clubs",
       },
     },
     categories: {
-      kicker: "Quick navigation",
-      title: "Explore collections",
+      kicker: "Clear selection",
+      title: "World Cup & Clubs",
       activeFilter: "Active filter",
       active: "Active",
       view: "View",
     },
     arrivals: {
-      title: "New arrivals in motion",
-      cta: "Open shop",
+      title: "World Cup jerseys upfront",
+      cta: "View jerseys",
     },
     products: {
-      kicker: "Shop",
-      title: "Recommended products",
+      kicker: "Simplified shop",
+      title: "World Cup & Club jerseys",
       emptyTitle: "No product matches these filters.",
       emptySubtitle: "Adjust filters to show more items.",
       more: "Show more",
@@ -294,7 +291,7 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       languageName: { fr: "Frances", en: "Ingles", pt: "Portugues" },
     },
     search: {
-      placeholder: "Pesquisar camisola, chuteira, acessorio...",
+      placeholder: "Pesquisar Franca, Marrocos, Real Madrid, Arsenal...",
       labels: {
         category: "Categoria",
         price: "Preco",
@@ -315,31 +312,30 @@ const COPY: Record<SiteLanguage, SiteCopy> = {
       themeAria: "Alternar modo claro e escuro",
     },
     hero: {
-      badge: "Loja premium de futebol",
-      title: "LIMAILLOTS, a nova base dos estudantes fans de futebol.",
-      subtitle: "Camisolas iconicas, chuteiras de desempenho e acessorios diarios.",
-      cta: "Comprar agora",
+      badge: "Epoca de Copa do Mundo",
+      title: "As camisolas que importam: selecoes e clubes.",
+      subtitle: "Uma selecao mais curta e premium: camisolas de Copa do Mundo e clubes fortes, prontas para pedir no WhatsApp.",
+      cta: "Ver camisolas",
       delivery: "Entrega Campus Express",
       quick: {
-        maillots: "Camisolas",
-        crampons: "Chuteiras",
-        accessoires: "Acessorios",
+        worldCup: "Copa do Mundo",
+        clubs: "Clubes",
       },
     },
     categories: {
-      kicker: "Navegacao rapida",
-      title: "Explore colecoes",
+      kicker: "Selecao clara",
+      title: "Copa do Mundo & Clubes",
       activeFilter: "Filtro ativo",
       active: "Ativo",
       view: "Ver",
     },
     arrivals: {
-      title: "Novidades em movimento",
-      cta: "Ver loja",
+      title: "Camisolas da Copa em destaque",
+      cta: "Ver camisolas",
     },
     products: {
-      kicker: "Loja",
-      title: "Produtos recomendados",
+      kicker: "Loja simplificada",
+      title: "Camisolas Copa do Mundo & Clubes",
       emptyTitle: "Nenhum produto corresponde a estes filtros.",
       emptySubtitle: "Ajuste os filtros para mostrar mais artigos.",
       more: "Ver mais",
