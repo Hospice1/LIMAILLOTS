@@ -1,18 +1,25 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Rajdhani, Space_Grotesk } from "next/font/google";
+import { Montserrat, Poppins } from "next/font/google";
 import "./globals.css";
 
-const bodyFont = Space_Grotesk({
+const bodyFont = Poppins({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const heroFont = Rajdhani({
+const headingFont = Montserrat({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["800"],
+});
+
+const heroFont = Montserrat({
   variable: "--font-hero",
   subsets: ["latin"],
-  weight: ["600", "700"],
+  weight: ["800"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://limaillots.vercel.app";
@@ -71,7 +78,7 @@ export default function RootLayout({
   return (
     <html
       lang="fr"
-      className={`${bodyFont.variable} ${heroFont.variable} antialiased`}
+      className={`${bodyFont.variable} ${headingFont.variable} ${heroFont.variable} antialiased`}
       suppressHydrationWarning
     >
       <body>

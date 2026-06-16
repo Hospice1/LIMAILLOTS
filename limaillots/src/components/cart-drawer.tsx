@@ -153,7 +153,7 @@ export function CartDrawer({
                       <p className="truncate text-sm font-semibold text-[var(--text)]">
                         {product.name}
                       </p>
-                      <p className="mt-1 text-xs text-[var(--text-muted)]">
+                      <p className="font-price mt-1 text-xs text-[var(--text-muted)]">
                         {formatPrice(product.price)}
                       </p>
                       <div className="mt-3 flex items-center justify-between">
@@ -224,15 +224,15 @@ export function CartDrawer({
             <div className="mt-4 space-y-2 text-sm text-[var(--text-muted)]">
               <div className="flex items-center justify-between">
                 <span>{copy.cart.subtotal}</span>
-                <span>{formatPrice(totalPrice)}</span>
+                <span className="font-price">{formatPrice(totalPrice)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>{copy.cart.discount} {appliedPromoCode ? `(${appliedPromoCode})` : ""}</span>
-                <span>-{formatPrice(discountAmount)}</span>
+                <span className="font-price">-{formatPrice(discountAmount)}</span>
               </div>
               <div className="flex items-center justify-between text-base font-semibold text-[var(--text)]">
                 <span>{copy.cart.total}</span>
-                <span>{formatPrice(finalPrice)}</span>
+                <span className="font-price">{formatPrice(finalPrice)}</span>
               </div>
             </div>
 

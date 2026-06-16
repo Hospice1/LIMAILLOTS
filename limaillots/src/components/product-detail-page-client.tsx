@@ -129,9 +129,9 @@ export function ProductDetailPageClient({
           <p className="mt-3 text-sm text-[var(--text-muted)] md:text-base">{product.description}</p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-bold text-[var(--text)]">{formatPrice(product.price)}</span>
+            <span className="font-price text-2xl text-[var(--text)]">{formatPrice(product.price)}</span>
             {product.oldPrice ? (
-              <span className="text-base text-[var(--text-muted)] line-through">
+              <span className="font-price text-base text-[var(--text-muted)] line-through">
                 {formatPrice(product.oldPrice)}
               </span>
             ) : null}
@@ -196,7 +196,7 @@ export function ProductDetailPageClient({
               >
                 <ProductGallery product={item} compact showThumbnails={false} clickCycles={false} className="h-28 w-full" />
                 <p className="mt-3 text-sm font-semibold text-[var(--text)]">{item.name}</p>
-                <p className="mt-1 text-xs text-[var(--text-muted)]">{formatPrice(item.price)}</p>
+                <p className="font-price mt-1 text-xs text-[var(--text-muted)]">{formatPrice(item.price)}</p>
               </Link>
             ))}
           </div>

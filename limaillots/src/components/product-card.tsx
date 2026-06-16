@@ -101,9 +101,9 @@ export function ProductCard({
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-lg font-bold text-[var(--text)]">{formatPrice(product.price)}</p>
+          <p className="font-price text-lg text-[var(--text)]">{formatPrice(product.price)}</p>
           {product.oldPrice && product.oldPrice > product.price ? (
-            <p className="text-sm text-[var(--text-muted)] line-through">
+            <p className="font-price text-sm text-[var(--text-muted)] line-through">
               {formatPrice(product.oldPrice)}
             </p>
           ) : null}
