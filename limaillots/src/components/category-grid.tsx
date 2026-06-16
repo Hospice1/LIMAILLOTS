@@ -13,7 +13,7 @@ export function CategoryGrid({ items, language, activeLabel, onSelect }: Categor
   const copy = getSiteCopy(language);
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-end justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">
@@ -28,7 +28,7 @@ export function CategoryGrid({ items, language, activeLabel, onSelect }: Categor
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
         {items.map((item) => {
           const isActive = activeLabel === item.label;
 
@@ -37,10 +37,10 @@ export function CategoryGrid({ items, language, activeLabel, onSelect }: Categor
               key={item.id}
               type="button"
               onClick={() => onSelect(item)}
-              className="group rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-[var(--card-shadow)] transition hover:-translate-y-1 hover:border-[var(--accent)]"
+              className="group text-left transition hover:-translate-y-1"
             >
               <div
-                className={`relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border bg-[var(--surface-muted)] text-3xl shadow-lg ring-4 ring-transparent transition group-hover:scale-[1.03] md:h-24 md:w-24 ${
+                className={`relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[var(--surface-muted)] text-3xl shadow-sm ring-2 ring-transparent transition group-hover:scale-[1.03] md:h-24 md:w-24 ${
                   isActive ? "ring-[var(--accent)]/20" : ""
                 }`}
               >
@@ -59,12 +59,10 @@ export function CategoryGrid({ items, language, activeLabel, onSelect }: Categor
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
               </div>
-              <p className="mt-3 text-center text-sm font-semibold text-[var(--text)] md:text-base">
+              <p className="mt-3 text-center text-sm font-semibold text-[var(--text)]">
                 {item.label}
               </p>
-              <p className="mt-1 text-center text-xs text-[var(--text-muted)]">
-                {isActive ? copy.categories.active : copy.categories.view}
-              </p>
+              {isActive ? <p className="mt-1 text-center text-[10px] font-black uppercase tracking-[0.14em] text-[var(--accent)]">{copy.categories.active}</p> : null}
             </button>
           );
         })}

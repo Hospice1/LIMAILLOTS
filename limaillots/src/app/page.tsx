@@ -13,6 +13,7 @@ import { MobileMenu } from "@/components/mobile-menu";
 import { PromoBanner } from "@/components/promo-banner";
 import { SearchFilters } from "@/components/search-filters";
 import { TrustStrip } from "@/components/trust-strip";
+import { WorldCupSection } from "@/components/world-cup-section";
 import {
   categoryItems,
   products as fallbackProducts,
@@ -274,6 +275,11 @@ export default function Home() {
     if (storeFocus === "clubs") return featuredProducts.filter(isClubProduct);
     return featuredProducts;
   }, [featuredProducts, storeFocus]);
+
+  const worldCupProducts = useMemo(
+    () => featuredProducts.filter(isWorldCupProduct),
+    [featuredProducts],
+  );
 
   const newArrivalProducts = useMemo(
     () =>
@@ -863,6 +869,12 @@ export default function Home() {
           />
 
           <TrustStrip />
+
+          <WorldCupSection
+            products={worldCupProducts}
+            onViewAll={() => handleHeroQuickCategorySelect("world-cup")}
+            onAddToCart={addToCart}
+          />
 
           <NewArrivalsRail
             products={newArrivalProducts}

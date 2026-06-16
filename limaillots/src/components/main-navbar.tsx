@@ -52,13 +52,13 @@ export function MainNavbar({
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-black/5 bg-[var(--bg)]/82 backdrop-blur-2xl">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="relative flex h-16 items-center justify-center md:h-[4.5rem]">
+        <div className="relative flex h-14 items-center justify-center md:h-16">
           <button
             type="button"
             onClick={onMenuToggle}
-            className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
+            className="absolute left-0 inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--text)] transition hover:bg-black/5"
             aria-label={copy.navbar.menuAria}
           >
             <MenuIcon className="h-5 w-5" />
@@ -69,15 +69,15 @@ export function MainNavbar({
             className="inline-flex items-center justify-center text-[var(--text)]"
             aria-label={copy.navbar.homeAria}
           >
-            <LimaillotsLogo className="h-10 w-[170px] md:w-[200px]" />
+            <LimaillotsLogo className="h-9 w-[158px] md:w-[190px]" />
           </Link>
 
-          <div className="absolute right-0 flex items-center gap-2">
-            <label className="block" aria-label={copy.navbar.languageLabel}>
+          <div className="absolute right-0 flex items-center gap-1.5">
+            <label className="hidden sm:block" aria-label={copy.navbar.languageLabel}>
               <select
                 value={language}
                 onChange={(event) => onLanguageChange(event.target.value as SiteLanguage)}
-                className="h-10 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--text)]"
+                className="h-9 rounded-full border border-black/5 bg-white/35 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--text)] outline-none"
               >
                 <option value="fr">{copy.navbar.languageName.fr}</option>
                 <option value="en">{copy.navbar.languageName.en}</option>
@@ -87,7 +87,7 @@ export function MainNavbar({
 
             <Link
               href={accountHref}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--text)] transition hover:bg-black/5"
               aria-label={copy.navbar.accountAria}
             >
               <UserIcon className="h-5 w-5" />
@@ -96,7 +96,7 @@ export function MainNavbar({
             <button
               type="button"
               onClick={onCartToggle}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--text)] transition hover:bg-black/5"
               aria-label={copy.navbar.cartAria}
             >
               <BagIcon className="h-5 w-5" />

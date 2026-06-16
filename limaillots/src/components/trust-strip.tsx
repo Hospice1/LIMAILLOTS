@@ -19,12 +19,12 @@ export function TrustStrip() {
   ];
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="grid gap-3 rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--card-shadow)] md:grid-cols-4">
+    <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+      <div className="grid gap-2 border-y border-[var(--border)] py-4 md:grid-cols-4">
         {items.map((item, index) => (
           <article
             key={item.title}
-            className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--surface-muted)] p-4"
+            className="px-1"
           >
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--accent)]">
               0{index + 1}

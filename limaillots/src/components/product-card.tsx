@@ -24,9 +24,16 @@ export function ProductCard({
   const isOutOfStock = product.stock <= 0;
   const isLowStock = product.stock > 0 && product.stock <= 3;
   const galleryClickCycles = !href;
+  const primaryBadge = product.isPromo
+    ? "Promo"
+    : product.isNew
+      ? "Nouveau"
+      : product.popularity >= 90
+        ? "Top vente"
+        : "";
 
   return (
-    <article className="group relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--card-shadow)] transition hover:-translate-y-1">
+    <article className="group relative overflow-hidden rounded-[1.75rem] bg-[var(--surface)] shadow-[var(--card-shadow)] transition hover:-translate-y-1">
       {href ? (
         <Link
           href={href}
@@ -41,25 +48,15 @@ export function ProductCard({
           compact
           showThumbnails={false}
           clickCycles={galleryClickCycles}
-          className="h-44 w-full"
+          className="h-64 w-full"
         />
-        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
-          {product.isNew ? (
-            <span className="rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-900">
-              Nouveau
+        {primaryBadge ? (
+          <div className="absolute left-3 top-3 z-20">
+            <span className="rounded-full bg-white/92 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-950 shadow-sm">
+              {primaryBadge}
             </span>
-          ) : null}
-          {product.isPromo ? (
-            <span className="rounded-full bg-red-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
-              Promo
-            </span>
-          ) : null}
-          {product.popularity >= 80 ? (
-            <span className="rounded-full bg-amber-400 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-zinc-950">
-              Meilleure vente
-            </span>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="relative z-20 space-y-4 p-5">
@@ -90,14 +87,11 @@ export function ProductCard({
               </span>
             ) : null}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em]">
-            {isLowStock ? (
-              <span className="text-red-500">Plus que {product.stock}</span>
-            ) : (
-              <span className="text-[var(--accent)]">Livraison rapide</span>
-            )}
-            <span className="text-[var(--text-muted)]">Produit verifie</span>
-          </div>
+          {isLowStock ? (
+            <p className="mt-3 text-[10px] font-black uppercase tracking-[0.12em] text-red-500">
+              Plus que {product.stock}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between">

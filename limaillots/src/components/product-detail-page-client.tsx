@@ -103,7 +103,7 @@ export function ProductDetailPageClient({
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/"
         className="inline-flex rounded-full border border-[var(--border)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]"
@@ -111,14 +111,14 @@ export function ProductDetailPageClient({
         Retour boutique
       </Link>
 
-      <section className="mt-6 grid gap-7 lg:grid-cols-[1.1fr_1fr]">
-        <ProductGallery product={product} className="min-h-[20rem]" />
+      <section className="mt-6 grid gap-6 lg:grid-cols-[1.18fr_0.82fr] lg:items-start">
+        <ProductGallery product={product} className="min-h-[30rem] lg:min-h-[38rem]" />
 
-        <div className="rounded-[2rem] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--card-shadow)] md:p-8">
+        <div className="rounded-[2rem] bg-[var(--surface)] p-6 shadow-[var(--card-shadow)] md:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
             {product.clubOrCountry}
           </p>
-          <h1 className="mt-2 text-3xl font-semibold text-[var(--text)]">{product.name}</h1>
+          <h1 className="mt-2 text-4xl leading-tight text-[var(--text)] md:text-5xl">{product.name}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-muted)] px-3 py-1 text-sm font-bold text-[var(--text)]">
               <StarIcon className="h-4 w-4 text-amber-400" />
@@ -144,20 +144,23 @@ export function ProductDetailPageClient({
             </span>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-6">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--text-muted)]">Tailles disponibles</p>
+            <div className="mt-3 flex flex-wrap gap-2">
             {product.sizes.map((size) => (
               <span
                 key={size}
-                className="rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)]"
+                className="rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-sm font-bold text-[var(--text)]"
               >
                 {size}
               </span>
             ))}
+            </div>
           </div>
 
           <div className="mt-6 grid gap-2 sm:grid-cols-2">
             {["Livraison ou retrait", "Confirmation WhatsApp", "Produit verifie", "Support taille"].map((item) => (
-              <div key={item} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 text-xs font-bold uppercase tracking-[0.1em] text-[var(--text)]">
+              <div key={item} className="rounded-2xl bg-[var(--surface-muted)] px-3 py-3 text-xs font-bold uppercase tracking-[0.1em] text-[var(--text)]">
                 {item}
               </div>
             ))}
@@ -172,12 +175,14 @@ export function ProductDetailPageClient({
             ))}
           </ul>
 
-          <ProductDetailActions productId={product.id} stock={product.stock} />
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            <ProductDetailActions productId={product.id} stock={product.stock} />
+          </div>
           <a
             href={`https://wa.me/2290191326544?text=${encodeURIComponent(`Bonjour LIMAILLOTS, je veux des informations sur ${product.name}`)}`}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex rounded-full border border-[var(--border)] px-6 py-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            className="mt-3 inline-flex w-full justify-center rounded-full border border-[var(--border)] px-6 py-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
             Demander sur WhatsApp
           </a>
@@ -185,8 +190,8 @@ export function ProductDetailPageClient({
       </section>
 
       {similarProducts.length > 0 ? (
-        <section className="mt-10">
-          <h2 className="text-2xl font-semibold text-[var(--text)]">Produits similaires</h2>
+        <section className="mt-12 border-t border-[var(--border)] pt-8">
+          <h2 className="text-3xl text-[var(--text)]">Produits similaires</h2>
           <div className="mt-4 grid gap-4 md:grid-cols-3">
             {similarProducts.map((item) => (
               <Link

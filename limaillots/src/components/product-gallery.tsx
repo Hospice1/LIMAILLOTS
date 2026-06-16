@@ -213,7 +213,7 @@ export function ProductGallery({
       onClick={clickCycles ? nextItem : undefined}
       role="presentation"
     >
-      <div className={`relative h-full w-full overflow-hidden ${compact ? "rounded-2xl" : "rounded-[2rem]"}`}>
+      <div className={`relative h-full w-full overflow-hidden bg-[var(--surface-muted)] ${compact ? "rounded-2xl" : "rounded-[2rem]"}`}>
         {activeItem ? (
           <MediaFrame item={activeItem} alt={product.name} priority={!compact} />
         ) : (
@@ -222,13 +222,17 @@ export function ProductGallery({
           </div>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
-        <div className="absolute left-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
-          {activeIndex + 1}/{gallery.length}
-        </div>
-        <div className="absolute right-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
-          Swipe / Hover
-        </div>
+        {!compact ? <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" /> : null}
+        {!compact && gallery.length > 1 ? (
+          <div className="absolute left-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
+            {activeIndex + 1}/{gallery.length}
+          </div>
+        ) : null}
+        {!compact && gallery.length > 1 ? (
+          <div className="absolute right-4 top-4 rounded-full bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
+            Swipe / Hover
+          </div>
+        ) : null}
       </div>
 
       {showThumbnails && gallery.length > 1 ? (
@@ -246,7 +250,7 @@ export function ProductGallery({
                   ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/20"
                   : "border-[var(--border)]"
               }`}
-              aria-label={`Voir le média ${index + 1} du produit`}
+              aria-label={`Voir le media ${index + 1} du produit`}
             >
               {item.kind === "video" ? (
                 <video src={item.url} className="h-full w-full object-cover" muted playsInline />
